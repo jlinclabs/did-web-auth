@@ -1,5 +1,24 @@
 # The DID Web Authorization Framework
 
+## TODO
+
+            Update this spec to rename things given new understanding of how did documents
+            are used to resolve service endpoints.
+
+
+            ```
+            redo the  `Auth Resolution Methods` part of this spec
+            ### Auth Resolution Methods
+            #### magic-link
+            #### secret-code
+            #### http-redirect
+            #### callback
+            ```
+
+
+
+
+
 
 ## Abstract
 

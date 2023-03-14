@@ -1,0 +1,23 @@
+{
+  "name": "proof-of-concept",
+  "private": true,
+  "type": "module",
+  "description": "Proof of concept of the DID Web Authentication Framework",
+  "author": "Jared Grippe <jared@jlinc.com>",
+  "license": "MIT",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "better-sqlite3": "^8.2.0",
+    "body-parser": "^1.20.2",
+    "connect-session-knex": "^3.0.1",
+    "express": "^4.18.2",
+    "express-handlebars": "^7.0.2",
+    "express-promise-router": "^4.1.1",
+    "express-session": "^1.17.3"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.21"
+  }
+}
