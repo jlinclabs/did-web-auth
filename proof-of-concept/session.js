@@ -3,14 +3,14 @@ import KnexSessionStore from 'connect-session-knex'
 // const KnexSessionStore = require('connect-session-knex')(session);
 import { knex } from './db.js'
 
-const sessionStore = new KnexSessionStore(session)({
+const sessionStore = new KnexSessionStore(expressSession)({
   knex,
   createtable: true,
 })
 
 const sessionMiddleware = expressSession({
   name: 'SESSION',
-  secret: process.env.SESSION_SECRET,
+  secret: `${process.env.HOST}:${process.env.PORT}`.toString('hex'),
   resave: true,
   saveUninitialized: true,
   // trustProxy: process.env.NODE_ENV === 'production',
@@ -23,3 +23,5 @@ const sessionMiddleware = expressSession({
   },
   store: sessionStore,
 })
+
+export { sessionStore, sessionMiddleware }

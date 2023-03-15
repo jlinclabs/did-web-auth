@@ -13,7 +13,7 @@ const knex = Knex({
 })
 export { knex }
 
-const ID = {
+const db = {
   async createUser(){
 
   },
@@ -22,7 +22,7 @@ const ID = {
 
   },
 }
-export { ID }
+export default db
 
 
 
