@@ -3,6 +3,7 @@ import { URL } from 'url'
 import Router from 'express-promise-router'
 
 import db from './db.js'
+import { publicKeyToBase58 } from './crypto.js'
 // import { sessionStore } from './session.js'
 
 const routes = new Router
@@ -248,9 +249,12 @@ routes.get('/u/:username/did.json', async (req, res, next) => {
     "publicKey": [
       {
         "id": `${did}#keys-1`,
-        "type": "Ed25519VerificationKey2018",
-        "controller": `${did}`,
-        "publicKeyBase58": "Gj7X9iYzY5zkh3qsiwMfzF8hSZ5f67Ft7RGxmvhDfdjC"
+        // "type": "Ed25519VerificationKey2018",
+        "type": `${user.public_key.crv}VerificationKey2018`,
+        // "controller": `${did}`,
+        "controller": `did:web:${host}`,
+        // "publicKeyBase58": "Gj7X9iYzY5zkh3qsiwMfzF8hSZ5f67Ft7RGxmvhDfdjC"
+        "publicKeyBase58": publicKeyToBase58(user.public_key),
       }
     ],
     "authentication": [

@@ -88,11 +88,12 @@ export default db
 
 
 
-function userRecordToUser(record){
+async function userRecordToUser(record){
+  if (!record) return
   const user = {...record}
-  if (user.public_key) {
-    user.publicKey = JWKToKey(JSON.parse(user.public_key))
-    delete user.public_key
-  }
+  if (user.public_key)
+    // user.public_key = await JWKToKey(JSON.parse(user.public_key))
+    user.public_key = JSON.parse(user.public_key)
+
   return user
 }

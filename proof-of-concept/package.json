@@ -20,6 +20,7 @@
     "express-session": "^1.17.3",
     "jose": "^4.13.1",
     "knex": "^2.4.2",
+    "multiformats": "^11.0.2",
     "node-fetch": "^3.3.1",
     "yargs": "^17.7.1"
   },
