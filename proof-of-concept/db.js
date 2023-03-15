@@ -14,15 +14,38 @@ const knex = Knex({
 })
 export { knex }
 
-const db = {
-  async createUser(){
+const ready = (async () => {
+  await knex.migrate.latest()
+})()
 
+
+const db = {
+  ready,
+
+  async createUser({ username, password }){
+    await this.ready
+    const record = await knex
+      .insert({
+
+      })
+      .into('users')
+
+    console.log({ record })
+    return record
   },
 
   async getDIDDocument(){
+    await this.ready
 
   },
+
+  async authenticateUser(){
+    await this.ready
+
+  }
 }
+
+
 export default db
 
 

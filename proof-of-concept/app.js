@@ -33,7 +33,9 @@ app.use(sessionMiddleware)
 
 app.use(routes)
 
-app.start = async function start({ port, host }){
+app.start = async function start(){
+  const port = app.get('port')
+  const host = app.get('host')
   return new Promise((resolve, reject) => {
     app.server = app.listen(port, error => {
       if (error) reject(error)

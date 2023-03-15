@@ -9,13 +9,10 @@ const argv = yargs(hideBin(process.argv))
   .demandOption(['port','host'])
   .argv
 
-console.log({ argv })
-
 app
-  .start({
-    port: argv.port,
-    host: argv.host,
-  })
+  .set('port', argv.port)
+  .set('host', argv.host)
+  .start()
   .catch(error => {
     console.error(error)
     process.exit(1)

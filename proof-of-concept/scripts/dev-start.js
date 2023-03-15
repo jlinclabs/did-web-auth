@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
 
-exec nodemon -w . --exec "./scripts/start.js $@"
+
+NODE_TLS_REJECT_UNAUTHORIZED=0 exec nodemon -w . --exec "./scripts/start.js $@"

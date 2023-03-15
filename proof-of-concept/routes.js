@@ -8,10 +8,11 @@ const routes = new Router
 export default routes
 
 routes.use((req, res, next) => {
+  res.locals.host = req.host
   console.log({
     user: req.user,
-    session: req.session,
-    locals: res.locals,
+    // session: req.session,
+    // locals: res.locals,
   })
   next()
 })
@@ -21,8 +22,10 @@ homepage route
 */
 routes.get('/.well-knwown/did.json', async (req, res, next) => {
   res.json({
-    id: `did:web:${process.env.APP_HOST}`,
-
+    id: `did:web:${req.host}`,
+    services: [
+      // {} TODO set the did web service here
+    ]
   })
 })
 
@@ -30,35 +33,62 @@ routes.get('/.well-knwown/did.json', async (req, res, next) => {
 homepage route
 */
 routes.get('/', async (req, res, next) => {
-  res.render('pages/home')
+  res.render('pages/home', {
+    email: 'jared@did-auth2.test', //TODO remove me
+  })
 })
 
+/*
+signup route
+*/
+routes.post('/signup', async (req, res, next) => {
+  const { username, password, passwordConfirmation } = req.body
+  console.log({ username, password, passwordConfirmation })
+  const renderSignupPage = locals => {
+    res.render('pages/signup', { username, ...locals })
+  }
+  if (password !== passwordConfirmation){
+    return renderSignupPage({ error: 'passwords do not match' })
+  }
+  let user
+  try{
+    user = await db.createUser({ username, password })
+  }catch(error){
+    return renderSignupPage({ error: `${error}` })
+  }
+  res.signin({ userId: user.id })
+  res.redirect('/')
+})
 
 /*
-login route
+signin route
 */
-routes.post('/login', async (req, res, next) => {
+routes.post('/signin', async (req, res, next) => {
   const { email, password } = req.body
 
   const [username, host] = email.split('@')
+  console.log({ email, password, username, host })
+
+  const renderSigninPage = locals => {
+    res.render('pages/signin', {
+      email,
+      showPasswordField: true,
+      ...locals
+    })
+  }
 
   // if the email is just a username or the email's host matches this host
-  if (!host || process.env.APP_HOST === host){ // normal login to this app
+  if (!host || host === req.host){ // normal signin to this app
     if (!password) { // if we didn't prompt for a password
-      return res.render('pages/login', { // prompt for password
-        email,
-        showPasswordField: true
-      })
+      return renderSigninPage() // prompt for password
     }
     const user = await db.authenticateUser(username, password)
     if (user){ // success
       // set http session to logged in as this user
-      res.login({ userId: user.id })
+      res.signin({ userId: user.id })
       res.redirect('/')
     }else{
-      return res.render('pages/login', {
-        email,
-        showPasswordField: true,
+      return renderSigninPage({
         error: 'invalid email or password'
       })
     }
@@ -67,9 +97,9 @@ routes.post('/login', async (req, res, next) => {
   const redirectUrl = await tryDidWebAuth(username, host)
   if (redirectUrl) return res.redirect(redirectUrl)
 
-  // res.render('pages/login', {
-  //   showPasswordField: true,
-  // })
+  return renderSigninPage({
+    error: `${host} does not appear to support did-web-auth`,
+  })
 })
 
 async function tryDidWebAuth(username, host){
@@ -78,25 +108,24 @@ async function tryDidWebAuth(username, host){
   const hostDidDocumentUrl = new URL(`https://${host}/.well-knwown/did.json`)
   const didDocumentUrl = new URL(`https://${host}/u/${username}/did.json`)
 
-  const hostDidDocument = await fetch(hostDidDocumentUrl, {
-    method: 'GET',
-    headers: {
-      'Accept': 'application/json',
-    },
-  }).then(res => res.json())
-  if (!hostDidDocument) return
+  const hostDidDocument = await fetchDidDocument(hostDidDocumentUrl)
+  if (!hostDidDocument) {
+    console.log(`failed to fetch host did document at ${hostDidDocumentUrl}`)
+    return
+  }
 
-  const didDocument = await fetch(didDocumentUrl, {
-    method: 'GET',
-    headers: {
-      'Accept': 'application/json',
-    },
-  }).then(res => res.json())
+  const didDocument = await fetchDidDocument(didDocumentUrl)
+  if (!didDocument) {
+    console.log(`failed to fetch signin did document at ${didDocumentUrl}`)
+    return
+  }
   if (
-    !didDocument ||
     !Array.isArray(didDocument.services) ||
     didDocument.id !== did
-  ) return
+  ) {
+    console.log(`invalid did document for signin at ${didDocumentUrl}`)
+    return
+  }
 
   // search the didDocument for an auth service endpoint
   const didWebAuthServices = didDocument.services.filter(service =>
@@ -113,8 +142,24 @@ async function tryDidWebAuth(username, host){
 
 }
 
+async function fetchDidDocument(url){
+  try{
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+    })
+    const data = await response.json()
+    return data
+  }catch(error){
+    console.log(`failed to fetch DID Document from ${url}`)
+    console.error(error)
+  }
+}
+
 /*
-login callback
+signin callback
 */
 routes.get('/', async (req, res, next) => {
 
@@ -153,7 +198,6 @@ routes.get('/u/:identifier', async (req, res, next) => {
 debug route
 */
 routes.get('/debug', async (req, res, next) => {
-  console.log({ sessionStore })
   // sessionStore.get(sid, fn)
   // sessionStore.set(sid, sessObject, fn)
   // sessionStore.touch(sid, sess, fn)
