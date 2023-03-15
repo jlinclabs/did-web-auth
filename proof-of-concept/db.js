@@ -14,6 +14,8 @@ export { knex }
 await knex.migrate.latest()
 
 
+
+
 const db = {
   async getAllSessions(){
     return await knex.select('*').from('sessions')

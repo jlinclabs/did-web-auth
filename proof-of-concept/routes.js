@@ -3,7 +3,7 @@ import { URL } from 'url'
 import Router from 'express-promise-router'
 
 import db from './db.js'
-import { publicKeyToBase58 } from './crypto.js'
+import { publicKeyToBase58, createJWS } from './crypto.js'
 // import { sessionStore } from './session.js'
 
 const routes = new Router
@@ -24,9 +24,21 @@ routes.use(async (req, res, next) => {
 homepage route
 */
 routes.get('/.well-knwown/did.json', async (req, res, next) => {
+  const hostPublicKey = db.getHostPublicKey()
   res.json({
-    id: `did:web:${req.hostname}`,
-    services: [
+    "id": `did:web:${req.hostname}`,
+    "publicKey": [
+      {
+        "id": `${did}#keys-1`,
+        // "type": "Ed25519VerificationKey2018",
+        "type": `${user.public_key.crv}VerificationKey2018`,
+        // "controller": `${did}`,
+        "controller": `did:web:${host}`,
+        // "publicKeyBase58": "Gj7X9iYzY5zkh3qsiwMfzF8hSZ5f67Ft7RGxmvhDfdjC"
+        "publicKeyBase58": publicKeyToBase58(hostPublicKey),
+      }
+    ],
+    "services": [
       // {} TODO set the did web service here
     ]
   })
@@ -137,6 +149,7 @@ async function tryDidWebAuth(username, host){
     console.log(`failed to fetch signin did document at ${didDocumentUrl}`)
     return
   }
+
   console.log('trying to login with did document', didDocument)
   if (didDocument.id !== did){
     console.log(`invalid did document for signin at ${didDocumentUrl}. bad id`)
@@ -160,14 +173,14 @@ async function tryDidWebAuth(username, host){
       did,
       now: Date.now(),
     }
-    const jws = await new jose.GeneralSign(
-      new TextEncoder().encode(JSON.stringify(data)),
-    )
-      .addSignature(ecPrivateKey)
-      .setProtectedHeader({ alg: 'ES256' })
-      .addSignature(rsaPrivateKey)
-      .setProtectedHeader({ alg: 'PS256' })
-      .sign()
+    const jws = createJWS({
+      payload: {
+
+      },
+      signers: [
+        hostPrivateKey
+      ]
+    })
 
     console.log(jws)
 
@@ -187,7 +200,7 @@ async function tryDidWebAuth(username, host){
 
 }
 
-async function fetchJSON(url, options){
+async function fetchJSON(url, options = {}){
   const response = await fetch(url, {
     ...options,
     headers: {
