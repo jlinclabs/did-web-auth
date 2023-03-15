@@ -13,6 +13,8 @@ export async function up(knex) {
     table.timestamp('created_at').notNullable()
     table.string('username').notNullable().unique()
     table.string('password_hash').notNullable()
+    table.json('public_key').notNullable()
+    table.json('private_key').notNullable()
   })
 }
 

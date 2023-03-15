@@ -170,13 +170,12 @@ async function tryDidWebAuth(username, host){
 
     console.log(jws)
 
-
     await fetch(url, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/jwe',
-      }
-      body: jwe,
+        'Content-Type': 'application/jws',
+      },
+      body: jws,
     })
   }
 
@@ -233,6 +232,7 @@ routes.get('/u/:username/did.json', async (req, res, next) => {
   const { username } = req.params
   console.log({ username })
   const user = await db.getUserByUsername({username})
+  console.log({ user })
   if (!user) return res.status(404).json({})
   const host = req.hostname
   const origin = `https://${host}`
