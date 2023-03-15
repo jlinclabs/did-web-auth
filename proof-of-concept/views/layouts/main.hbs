@@ -17,6 +17,13 @@
         <a class="text-blue-500 hover:text-blue-800" href="/">
           {{host}}
         </a>
+        <div class="flex-grow"></div>
+        {{#if user}}
+        <div class="">
+          <span class="text-gray-700 text-sm font-bold">Signed in as {{user.username}}</span>
+          {{> signoutForm }}
+        </div>
+        {{/if}}
       </div>
       <main>{{{body}}}</main>
     </div>

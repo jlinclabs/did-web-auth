@@ -9,6 +9,7 @@
     "test": "brittle --coverage test/*.test.js"
   },
   "dependencies": {
+    "bcrypt": "^5.1.0",
     "better-sqlite3": "^8.2.0",
     "body-parser": "^1.20.2",
     "connect-session-knex": "^3.0.1",

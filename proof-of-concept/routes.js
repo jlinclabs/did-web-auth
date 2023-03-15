@@ -1,17 +1,19 @@
+import { promisify } from 'util'
 import { URL } from 'url'
 import Router from 'express-promise-router'
 
 import db from './db.js'
-import { sessionStore } from './session.js'
+// import { sessionStore } from './session.js'
 
 const routes = new Router
 export default routes
 
-routes.use((req, res, next) => {
-  res.locals.host = req.host
+routes.use(async (req, res, next) => {
   console.log({
     user: req.user,
-    // session: req.session,
+    session: req.session,
+    userId: req.userId,
+    user: req.user,
     // locals: res.locals,
   })
   next()
@@ -54,39 +56,41 @@ routes.post('/signup', async (req, res, next) => {
   try{
     user = await db.createUser({ username, password })
   }catch(error){
+    console.log({ error })
     return renderSignupPage({ error: `${error}` })
   }
-  res.signin({ userId: user.id })
-  res.redirect('/')
+  console.log({ user })
+  await req.login(user.id)
+  // req.session.userId = user.id
+  // await new Promise((resolve, reject) => {
+  //   req.session.save((error) => {
+  //     if (error) reject(error); else resolve()
+  //   })
+  // })
+  // console.log('req.session 2', req.session)
+  res.render('redirect', { to: '/' })
 })
 
 /*
 signin route
 */
 routes.post('/signin', async (req, res, next) => {
-  const { email, password } = req.body
-
-  const [username, host] = email.split('@')
-  console.log({ email, password, username, host })
+  const { username, password, email } = req.body
+  console.log('/signin', { username, password, email })
 
   const renderSigninPage = locals => {
     res.render('pages/signin', {
       email,
-      showPasswordField: true,
       ...locals
     })
   }
 
-  // if the email is just a username or the email's host matches this host
-  if (!host || host === req.host){ // normal signin to this app
-    if (!password) { // if we didn't prompt for a password
-      return renderSigninPage() // prompt for password
-    }
-    const user = await db.authenticateUser(username, password)
+  if (username && password){
+    const user = await db.authenticateUser({username, password})
     if (user){ // success
       // set http session to logged in as this user
-      res.signin({ userId: user.id })
-      res.redirect('/')
+      req.session.userId = user.id
+      res.render('redirect', { to: '/' })
     }else{
       return renderSigninPage({
         error: 'invalid email or password'
@@ -94,12 +98,38 @@ routes.post('/signin', async (req, res, next) => {
     }
   }
 
-  const redirectUrl = await tryDidWebAuth(username, host)
-  if (redirectUrl) return res.redirect(redirectUrl)
+  // if (email){
+  //   const [username, host] = email.split('@')
+  //   // if (host === req.host)
 
-  return renderSigninPage({
-    error: `${host} does not appear to support did-web-auth`,
-  })
+  //   console.log({ email, password, username, host })
+
+
+
+  //   // if the email is just a username or the email's host matches this host
+  //   if (!host || host === req.host){ // normal signin to this app
+  //     if (!password) { // if we didn't prompt for a password
+  //       return renderSigninPage() // prompt for password
+  //     }
+  //     const user = await db.authenticateUser(username, password)
+  //     if (user){ // success
+  //       // set http session to logged in as this user
+  //       req.session.userId = user.id
+  //       res.redirect('/')
+  //     }else{
+  //       return renderSigninPage({
+  //         error: 'invalid email or password'
+  //       })
+  //     }
+  //   }
+
+  //   const redirectUrl = await tryDidWebAuth(username, host)
+  //   if (redirectUrl) return res.redirect(redirectUrl)
+
+  //   return renderSigninPage({
+  //     error: `${host} does not appear to support did-web-auth`,
+  //   })
+  // }
 })
 
 async function tryDidWebAuth(username, host){
@@ -158,6 +188,10 @@ async function fetchDidDocument(url){
   }
 }
 
+routes.post('/signout', async (req, res, next) => {
+  await req.logout()
+  res.render('redirect', { to: '/' })
+})
 /*
 signin callback
 */
@@ -207,13 +241,20 @@ routes.get('/debug', async (req, res, next) => {
   // sessionStore.stopDbCleanup()
   // sessionStore.getNextDbCleanup()
   // sessionStore.all(fn)
-  const sessions = new Promise((resolve, reject) => {
-    sessionStore.all((error, sessions) => {
-      if (error) return reject(error)
-      resolve(sessions)
-    })
-  })
+
+  // const sessions = new Promise((resolve, reject) => {
+  //   sessionStore.all((error, sessions) => {
+  //     if (error) return reject(error)
+  //     resolve(sessions)
+  //   })
+  // })
+
+  const sessions = await db.getAllSessions()
+  const users = await db.getAllUsers()
   res.render('pages/debug', {
-    sessions
+    debug: {
+      sessions,
+      users,
+    }
   })
 })

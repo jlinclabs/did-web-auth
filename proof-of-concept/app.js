@@ -2,7 +2,7 @@ import express from 'express'
 import bodyParser from 'body-parser'
 import { create } from 'express-handlebars'
 
-import { sessionMiddleware } from './session.js'
+import { sessionRoutes } from './session.js'
 import routes from './routes.js'
 const app = express()
 
@@ -29,7 +29,7 @@ app.use(express.urlencoded({
 
 app.use(bodyParser.json())
 
-app.use(sessionMiddleware)
+app.use(sessionRoutes)
 
 app.use(routes)
 
