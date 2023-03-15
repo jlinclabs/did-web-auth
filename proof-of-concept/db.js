@@ -5,6 +5,7 @@
  */
 import Knex from 'knex'
 import bcrypt from 'bcrypt'
+import e from 'express'
 
 const knex = Knex({
   client: 'better-sqlite3',
@@ -42,16 +43,23 @@ const db = {
         'created_at',
         'username',
       )
-
-    console.log({ user })
+      .catch(error => {
+        if (error.message.includes('UNIQUE constraint failed: users.username')){
+          throw new Error(`a user with the username ${username} already exists.`)
+        }
+        throw error
+      })
     return user
   },
 
-  async getUserById(userId){
+  async getUserById({
+    id,
+    select = ['id', 'username', 'created_at'],
+  }){
     return await knex
-      .select(['id', 'username', 'created_at'])
+      .select(select)
       .from('users')
-      .where({ id: userId })
+      .where({ id })
       .first()
   },
 
@@ -59,16 +67,24 @@ const db = {
 
   },
 
-  async authenticateUser({username, password}){
+  async getUserByUsername({
+    username,
+    select = ['id', 'username', 'created_at'],
+  }){
     const record = await knex
-      .select(['id', 'password_hash'])
+      .select(select)
       .from('users')
       .where({ username })
       .first()
 
+    return record
+  },
+
+  async authenticateUser({username, password}){
+    const record = await this.getUserByUsername(username, ['id', 'password_hash'])
     if (!record) return
     const match = await bcrypt.compare(password, record.password_hash);
-    if (match) return await this.getUserById(record.id)
+    if (match) return await this.getUserById({ id: record.id })
   }
 }
 

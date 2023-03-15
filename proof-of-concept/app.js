@@ -1,6 +1,7 @@
 import express from 'express'
 import bodyParser from 'body-parser'
 import { create } from 'express-handlebars'
+import toColor from '@mapbox/to-color'
 
 import { sessionRoutes } from './session.js'
 import routes from './routes.js'
@@ -15,7 +16,7 @@ const hbs = create({
     toJSON: object => JSON.stringify(object, null, 2),
     usernameToEmail: username => {
       if (username.includes('@')) return username
-      return `${username}@${app.get('host')}`
+      return `${username}@${app.get('host')}`.trim()
     }
   }
 })
@@ -40,6 +41,11 @@ app.use(routes)
 app.start = async function start(){
   const port = app.get('port')
   const host = app.get('host')
+  const appColor = new toColor(`${host}`).getColor().hsl.formatted
+  app.set('appColor', appColor)
+  app.locals.host = host
+  app.locals.port = port
+  app.locals.appColor = appColor
   return new Promise((resolve, reject) => {
     app.server = app.listen(port, error => {
       if (error) reject(error)

@@ -31,10 +31,8 @@ sessionRoutes.use(sessionMiddleware)
 sessionRoutes.use(async (req, res, next) => {
   req.userId = req.session.userId
   req.user = req.userId
-    ? await db.getUserById(req.userId)
+    ? await db.getUserById({ id: req.userId })
     : undefined
-
-  res.locals.host = req.host
   res.locals.userId = req.userId
   res.locals.user = req.user
 

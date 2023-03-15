@@ -10,20 +10,24 @@
   </head>
   <body>
     <div class="">
-      <div class="flex flex-wrap items-center bg-teal-200 p-2 gap-2">
-        <a class="text-xl text-blue-500 hover:text-blue-800" href="/">
-          DID Auth POC
-        </a>
+      <div
+        class="p-2 grid gap-2 grid-cols-3 items-center"
+        style="background-color: {{appColor}};"
+      >
         <a class="text-blue-500 hover:text-blue-800" href="/">
           {{host}}
         </a>
-        <div class="flex-grow"></div>
-        {{#if user}}
-        <div class="">
-          <span class="text-gray-700 text-sm font-bold">Signed in as {{user.username}}</span>
-          {{> signoutForm }}
+        <a class="justify-self-center text-xl text-blue-500 hover:text-blue-800" href="/">
+          DID Auth POC
+        </a>
+        <div class="justify-self-end">
+          {{#if user}}
+            <span class="text-gray-700 text-sm font-bold">{{usernameToEmail user.username}}</span>
+            {{> signoutForm }}
+          {{else}}
+
+          {{/if}}
         </div>
-        {{/if}}
       </div>
       <main>{{{body}}}</main>
     </div>

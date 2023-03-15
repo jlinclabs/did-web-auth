@@ -1,6 +1,7 @@
 lockfileVersion: 5.4
 
 specifiers:
+  '@mapbox/to-color': ^2.0.0
   bcrypt: ^5.1.0
   better-sqlite3: ^8.2.0
   body-parser: ^1.20.2
@@ -18,6 +19,7 @@ specifiers:
   yargs: ^17.7.1
 
 dependencies:
+  '@mapbox/to-color': 2.0.0
   bcrypt: 5.1.0
   better-sqlite3: 8.2.0
   body-parser: 1.20.2
@@ -79,6 +81,12 @@ packages:
     transitivePeerDependencies:
       - encoding
       - supports-color
+    dev: false
+
+  /@mapbox/to-color/2.0.0:
+    resolution: {integrity: sha512-inpsOaIeCtl1qfVJgq2thMuci10nh5qQCWJOA6VAc5OaXhxTL+nZmKe3hIzroEF/4vh7kvLx7rmIrCL6Gd8aew==}
+    dependencies:
+      d3-color-difference: 0.1.3
     dev: false
 
   /@types/istanbul-lib-coverage/2.0.4:
@@ -443,6 +451,16 @@ packages:
       shebang-command: 2.0.0
       which: 2.0.2
     dev: true
+
+  /d3-color-difference/0.1.3:
+    resolution: {integrity: sha512-yAGiVdTZR/wpI66n85xvkTvjxFth0IuGrEeX/anl1Q5rzNc2/V7oOjoJdqQnahOuS+SgbAR0zu8T0SYY7hGTtw==}
+    dependencies:
+      d3-color: 1.4.1
+    dev: false
+
+  /d3-color/1.4.1:
+    resolution: {integrity: sha512-p2sTHSLCJI2QKunbGb7ocOh7DgTAn8IrLx21QRc/BSnodXM4sv6aLQlnfpvehFMLZEfBc6g9pH9SWQccFYfJ9Q==}
+    dev: false
 
   /data-uri-to-buffer/4.0.1:
     resolution: {integrity: sha512-0R9ikRb668HB7QDxT1vkpuUBtqc53YyAwMwGeUFKRojY/NWKvdZ+9UYtRfGmhqNbRkTSVpMbmyhXipFFv2cb/A==}

@@ -1,5 +1,8 @@
 <form action="/signup" method="post">
   <div style="display: flex; flex-direction: column; gap: 10px;">
+    {{#if error}}
+      <div class="mb-4 text-red-700">{{error}}</div>
+    {{/if}}
     <div class="mb-4">
       <label class="block text-gray-700 text-sm font-bold mb-2" for="username-input">
         Username
@@ -22,7 +25,6 @@
         id="password-input"
         name="password"
         type="password"
-        placeholder="***************"
       >
     </div>
     <div class="mb-4">
@@ -34,7 +36,6 @@
         id="password-confirmation-input"
         name="passwordConfirmation"
         type="password"
-        placeholder="***************"
       >
     </div>
     <div class="flex items-center justify-end">

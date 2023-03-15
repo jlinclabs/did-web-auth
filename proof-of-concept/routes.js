@@ -75,8 +75,18 @@ routes.post('/signup', async (req, res, next) => {
 signin route
 */
 routes.post('/signin', async (req, res, next) => {
-  const { username, password, email } = req.body
+  let { username, password, email } = req.body
   console.log('/signin', { username, password, email })
+
+  let emailUsername, emailHost
+  if (email){
+    ([emailUsername, emailHost] = email.trim().split('@'))
+    // treat the email as a username since were the host
+    if (emailHost.toLowerCase() === req.host.toLowerCase()){
+      username = emailUsername
+      email = undefined
+    }
+  }
 
   const renderSigninPage = locals => {
     res.render('pages/signin', {
@@ -89,46 +99,24 @@ routes.post('/signin', async (req, res, next) => {
     const user = await db.authenticateUser({username, password})
     if (user){ // success
       await req.login(user.id)
-      res.render('redirect', { to: '/' })
+      return res.render('redirect', { to: '/' })
     }else{
       return renderSigninPage({
         error: 'invalid email or password'
       })
     }
   }
+  if (email){
+    // you could lookup a user by this email at this point
+    const redirectUrl = await tryDidWebAuth(emailUsername, emailHost)
+    if (redirectUrl) return res.redirect(redirectUrl)
 
-  // if (email){
-  //   const [username, host] = email.split('@')
-  //   // if (host === req.host)
-
-  //   console.log({ email, password, username, host })
-
+    return renderSigninPage({
+      error: `${emailHost} does not appear to support did-web-auth`,
+    })
+  }
 
 
-  //   // if the email is just a username or the email's host matches this host
-  //   if (!host || host === req.host){ // normal signin to this app
-  //     if (!password) { // if we didn't prompt for a password
-  //       return renderSigninPage() // prompt for password
-  //     }
-  //     const user = await db.authenticateUser(username, password)
-  //     if (user){ // success
-  //       // set http session to logged in as this user
-  //       req.session.userId = user.id
-  //       res.redirect('/')
-  //     }else{
-  //       return renderSigninPage({
-  //         error: 'invalid email or password'
-  //       })
-  //     }
-  //   }
-
-  //   const redirectUrl = await tryDidWebAuth(username, host)
-  //   if (redirectUrl) return res.redirect(redirectUrl)
-
-  //   return renderSigninPage({
-  //     error: `${host} does not appear to support did-web-auth`,
-  //   })
-  // }
 })
 
 async function tryDidWebAuth(username, host){
@@ -205,9 +193,31 @@ routes.get('/', async (req, res, next) => {
 profile
 GET /u/alice
 */
-routes.get('/u/:identifier/did.json', async (req, res, next) => {
+routes.get('/u/:username/did.json', async (req, res, next) => {
+  const { username } = req.params
+  console.log({ username })
+  const user = await db.getUserByUsername({username})
+  if (!user) return res.status(404).json({})
+  const did = `did:web:${req.host}:u:${username}`
+  // more complex did management would require persisting records
+  // and generating this document in a more complex way
   res.json({
-
+    "@context": "",
+    "id": did,
+    "authentication": [
+      {
+        "type": "Ed25519SignatureAuthentication2018",
+        "publicKey": `${did}#keys-1`
+      }
+    ],
+    "service": [
+      {
+        "type": "DidWebAuth",
+        "serviceEndpoint": `https://${req.host}/auth/did`,
+        "username": username,
+        "profileUrl": `https://${req.host}/@${username}`,
+      }
+    ]
   })
 })
 

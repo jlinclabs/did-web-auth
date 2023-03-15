@@ -5,8 +5,16 @@
   <div class="text-center my-6">
     <h2 class="text-xl font-semibold">You are logged in as {{user.username}}</h2>
     <p class="my-2">
-      You can login to any other site using
-      <span class="font-semibold">{{usernameToEmail user.username}}</span>
+      <span class="select-none">You can login to any other site using<span>&nbsp</span></span>
+      <input
+        class="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+        type="text"
+        value="{{usernameToEmail user.username}}"
+        readonly
+      />
+    </p>
+    <p>
+      Here is your <a class="text-blue-500 hover:text-blue-800" href="/u/{{user.username}}/did.json">DID Document</a>
     </p>
     <div class="my-2">
     {{> signoutForm }}
