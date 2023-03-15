@@ -2,9 +2,20 @@ import { URL } from 'url'
 import Router from 'express-promise-router'
 
 import db from './db.js'
+import { sessionStore } from './session.js'
 
 const routes = new Router
 export default routes
+
+routes.use((req, res, next) => {
+  console.log({
+    user: req.user,
+    session: req.session,
+    locals: res.locals,
+  })
+  next()
+})
+
 /*
 homepage route
 */
@@ -129,4 +140,36 @@ GET /u/alice
 routes.get('/u/:identifier', async (req, res, next) => {
 
   res.render('pages/profile')
+})
+
+
+
+
+
+
+
+
+/*
+debug route
+*/
+routes.get('/debug', async (req, res, next) => {
+  console.log({ sessionStore })
+  // sessionStore.get(sid, fn)
+  // sessionStore.set(sid, sessObject, fn)
+  // sessionStore.touch(sid, sess, fn)
+  // sessionStore.destroy(sid, fn)
+  // sessionStore.length(fn)
+  // sessionStore.clear(fn)
+  // sessionStore.stopDbCleanup()
+  // sessionStore.getNextDbCleanup()
+  // sessionStore.all(fn)
+  const sessions = new Promise((resolve, reject) => {
+    sessionStore.all((error, sessions) => {
+      if (error) return reject(error)
+      resolve(sessions)
+    })
+  })
+  res.render('pages/debug', {
+    sessions
+  })
 })

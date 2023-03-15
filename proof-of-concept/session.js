@@ -3,10 +3,12 @@ import KnexSessionStore from 'connect-session-knex'
 // const KnexSessionStore = require('connect-session-knex')(session);
 import { knex } from './db.js'
 
-const sessionStore = new KnexSessionStore(expressSession)({
+const SessionStore = KnexSessionStore(expressSession)
+const sessionStore = new SessionStore({
   knex,
   createtable: true,
 })
+console.log({ sessionStore })
 
 const sessionMiddleware = expressSession({
   name: 'SESSION',

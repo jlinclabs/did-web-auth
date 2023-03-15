@@ -8,8 +8,9 @@ import Knex from 'knex'
 const knex = Knex({
   client: 'better-sqlite3',
   connection: {
-    filename: process.env.DATABASE_FILE
-  }
+    filename: process.env.DATABASE_FILE || ':memory:'
+  },
+  asyncStackTraces: true,
 })
 export { knex }
 

@@ -2,7 +2,6 @@ import express from 'express'
 import bodyParser from 'body-parser'
 import { create } from 'express-handlebars'
 
-// import db from './db.js'
 import { sessionMiddleware } from './session.js'
 import routes from './routes.js'
 const app = express()

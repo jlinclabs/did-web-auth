@@ -1,0 +1,3 @@
+# SCENARIOS
+
+## SCENARIO A
