@@ -154,7 +154,23 @@ async function tryDidWebAuth(username, host){
   console.log({ didWebAuthServices })
   for (const didWebAuthService of didWebAuthServices){
     const url = didWebAuthService.serviceEndpoint
-    const
+
+    const data = {
+      did,
+      now: Date.now(),
+    }
+    const jws = await new jose.GeneralSign(
+      new TextEncoder().encode(JSON.stringify(data)),
+    )
+      .addSignature(ecPrivateKey)
+      .setProtectedHeader({ alg: 'ES256' })
+      .addSignature(rsaPrivateKey)
+      .setProtectedHeader({ alg: 'PS256' })
+      .sign()
+
+    console.log(jws)
+
+
     await fetch(url, {
       method: 'POST',
       headers: {
