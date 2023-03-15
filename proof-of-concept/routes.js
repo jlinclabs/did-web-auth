@@ -24,7 +24,7 @@ homepage route
 */
 routes.get('/.well-knwown/did.json', async (req, res, next) => {
   res.json({
-    id: `did:web:${req.host}`,
+    id: `did:web:${req.hostname}`,
     services: [
       // {} TODO set the did web service here
     ]
@@ -82,7 +82,7 @@ routes.post('/signin', async (req, res, next) => {
   if (email){
     ([emailUsername, emailHost] = email.trim().split('@'))
     // treat the email as a username since were the host
-    if (emailHost.toLowerCase() === req.host.toLowerCase()){
+    if (emailHost.toLowerCase() === req.hostname.toLowerCase()){
       username = emailUsername
       email = undefined
     }
@@ -136,20 +136,32 @@ async function tryDidWebAuth(username, host){
     console.log(`failed to fetch signin did document at ${didDocumentUrl}`)
     return
   }
-  if (
-    !Array.isArray(didDocument.services) ||
-    didDocument.id !== did
-  ) {
-    console.log(`invalid did document for signin at ${didDocumentUrl}`)
+  console.log('trying to login with did document', didDocument)
+  if (didDocument.id !== did){
+    console.log(`invalid did document for signin at ${didDocumentUrl}. bad id`)
+    return
+  }
+  if (!Array.isArray(didDocument.service)){
+    console.log(`invalid did document for signin at ${didDocumentUrl}. no service listed`)
     return
   }
 
   // search the didDocument for an auth service endpoint
-  const didWebAuthServices = didDocument.services.filter(service =>
-    service.id === '#did-web-auth' // TODO TDB this is more complex
+  const didWebAuthServices = didDocument.service.filter(service =>
+    // service.id === '#did-web-auth' // TODO TDB this is more complex
+    service.type === "DidWebAuth"
   )
+  console.log({ didWebAuthServices })
   for (const didWebAuthService of didWebAuthServices){
-    // didWebAuthService
+    const url = didWebAuthService.serviceEndpoint
+    const
+    await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/jwe',
+      }
+      body: jwe,
+    })
   }
 
   /* TODO
@@ -159,16 +171,24 @@ async function tryDidWebAuth(username, host){
 
 }
 
+async function fetchJSON(url, options){
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      ...options.headers
+    },
+    body: options.body
+      ? JSON.stringify(options.body)
+      : undefined,
+  })
+  return await response.json()
+}
+
 async function fetchDidDocument(url){
   try{
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-      },
-    })
-    const data = await response.json()
-    return data
+    return await fetchJSON(url)
   }catch(error){
     console.log(`failed to fetch DID Document from ${url}`)
     console.error(error)
@@ -198,12 +218,25 @@ routes.get('/u/:username/did.json', async (req, res, next) => {
   console.log({ username })
   const user = await db.getUserByUsername({username})
   if (!user) return res.status(404).json({})
-  const did = `did:web:${req.host}:u:${username}`
+  const host = req.hostname
+  const origin = `https://${host}`
+  const did = `did:web:${host}:u:${username}`
   // more complex did management would require persisting records
   // and generating this document in a more complex way
   res.json({
-    "@context": "",
+    "@context": [
+      "https://www.w3.org/ns/did/v1",
+      "https://schema.org/"
+    ],
     "id": did,
+    "publicKey": [
+      {
+        "id": `${did}#keys-1`,
+        "type": "Ed25519VerificationKey2018",
+        "controller": `${did}`,
+        "publicKeyBase58": "Gj7X9iYzY5zkh3qsiwMfzF8hSZ5f67Ft7RGxmvhDfdjC"
+      }
+    ],
     "authentication": [
       {
         "type": "Ed25519SignatureAuthentication2018",
@@ -213,9 +246,9 @@ routes.get('/u/:username/did.json', async (req, res, next) => {
     "service": [
       {
         "type": "DidWebAuth",
-        "serviceEndpoint": `https://${req.host}/auth/did`,
+        "serviceEndpoint": `${origin}/auth/did`,
         "username": username,
-        "profileUrl": `https://${req.host}/@${username}`,
+        "profileUrl": `${origin}/@${username}`,
       }
     ]
   })

@@ -63,21 +63,15 @@ const db = {
       .first()
   },
 
-  async getDIDDocument(){
-
-  },
-
   async getUserByUsername({
     username,
     select = ['id', 'username', 'created_at'],
   }){
-    const record = await knex
+    return await knex
       .select(select)
       .from('users')
       .where({ username })
       .first()
-
-    return record
   },
 
   async authenticateUser({username, password}){
