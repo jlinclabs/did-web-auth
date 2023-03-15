@@ -88,8 +88,7 @@ routes.post('/signin', async (req, res, next) => {
   if (username && password){
     const user = await db.authenticateUser({username, password})
     if (user){ // success
-      // set http session to logged in as this user
-      req.session.userId = user.id
+      await req.login(user.id)
       res.render('redirect', { to: '/' })
     }else{
       return renderSigninPage({

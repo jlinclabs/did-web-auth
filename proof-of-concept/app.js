@@ -13,6 +13,10 @@ const hbs = create({
   partialsDir: './views/partials/',
   helpers: {
     toJSON: object => JSON.stringify(object, null, 2),
+    usernameToEmail: username => {
+      if (username.includes('@')) return username
+      return `${username}@${app.get('host')}`
+    }
   }
 })
 
