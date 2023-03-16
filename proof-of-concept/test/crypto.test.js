@@ -2,6 +2,7 @@ import test from 'brittle'
 import {
   generateSigningKeyPair,
   generateEncryptingKeyPair,
+  generateEncryptingKeyPairFromSigningKeyPair,
   publicKeyToJKW,
   privateKeyToJKW,
   publicKeyFromJKW,
@@ -32,23 +33,26 @@ test('generate signing keys from seed', async t => {
   )
 })
 
-test.skip('generate encrypting keys from seed', async t => {
-  const kp1 = await generateEncryptingKeyPair('seed one')
+test.solo('generate encrypting keys from seed', async t => {
+  const skp1 = await generateSigningKeyPair('encryption test kp1')
+  const ekp1 = await generateEncryptingKeyPairFromSigningKeyPair(skp1)
+  console.log({ skp1, ekp1 })
+
   t.alike(
     publicKeyToJKW(kp1.publicKey),
     {
+      kty: 'OKP',
       crv: 'X25519',
       x: 'fWXL4vmA19dADXAqCH25ZV6etOQ_TZhF2AjZrcOFsgs',
-      kty: 'OKP',
     }
   )
   t.alike(
     privateKeyToJKW(kp1.privateKey),
     {
+      kty: 'OKP',
       crv: 'X25519',
       // d: 'c2VlZCBvbmUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
-      // x: 'Odqt3JEB83JgwD1oGzv9lavRV0XxI4231BtzU5X1t4o',
-      // kty: 'OKP',
+      x: 'fWXL4vmA19dADXAqCH25ZV6etOQ_TZhF2AjZrcOFsgs',
     }
   )
 })
@@ -127,5 +131,4 @@ test.skip('JWE', async t => {
       kp2.publicKey,
     ]
   })
-
 })

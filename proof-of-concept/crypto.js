@@ -1,13 +1,16 @@
 import { promisify } from 'util'
 import crypto from 'crypto'
-import * as jose from 'jose'
 import { base64url } from 'multiformats/bases/base64'
 import { base58btc } from 'multiformats/bases/base58'
-import nacl from 'tweetnacl'
+import * as jose from 'jose'
+import ed25519 from '@stablelib/ed25519'
+import x25519 from '@stablelib/x25519'
+// import nacl from 'tweetnacl'
 // TODO remove these
 // import ed25519 from 'ed25519'
 // import forge from 'node-forge'
 
+console.log({ ed25519 })
 const generateKeyPair = promisify(crypto.generateKeyPair) //.bind(null, 'ed25519')
 
 
@@ -26,26 +29,72 @@ function seedToBuffer(seed){
   return seedBuffer
 }
 
+
+export async function generateSigningKeyPair(seed){
+  let { publicKey, secretKey: privateKey } = seed
+    ? ed25519.generateKeyPairFromSeed(seedToBuffer(seed))
+    : ed25519.generateKeyPair()
+
+  console.log('generateSigningKeyPair (Uint8Arrays)', { publicKey, privateKey })
+  // let { publicKey, secretKey: privateKey } = seed
+  //   ? nacl.sign.keyPair.fromSeed(seedToBuffer(seed))
+  //   : nacl.sign.keyPair()
+  // // console.log('generateSigningKeyPair', { publicKey, privateKey })
+
+  const publicKeyAsUint8Array = publicKey
+  const privateKeyAsUint8Array = privateKey
+
+
+  publicKey = signingPublicKeyFromBuffer(createEd25519PublicKeySpkiBuffer(publicKey))
+  privateKey = signingPrivateKeyFromBuffer(createEd25519PrivateKeyPkcs8Buffer(privateKey))
+  console.log('generateSigningKeyPair (objects)', { publicKey, privateKey })
+
+  // console.log('generateSigningKeyPair', { publicKey, privateKey })
+  return { publicKey, privateKey }
+}
+
+export async function generateEncryptingKeyPairFromSigningKeyPair({ publicKey, privateKey }){
+  publicKey = encryptingPublicKeyFromBuffer(
+    createX25519PublicKeySpkiBuffer(
+      ed25519.convertPublicKeyToX25519(
+        publicSigningKeyToUint8Array(publicKey)
+      )
+    )
+  )
+  privateKey = encryptingPrivateKeyFromBuffer(
+    // createX25519PrivateKeyPkcs8Buffer(
+      ed25519.convertSecretKeyToX25519(
+        privateSigningKeyToUint8Array(privateKey)
+      )
+    // )
+  )
+  console.log('generateEncryptingKeyPairFromSigningKeyPair', { publicKey, privateKey })
+  return { publicKey, privateKey }
+}
+
 export async function generateEncryptingKeyPair(seed){
   let { publicKey, secretKey: privateKey } = seed
     ? nacl.box.keyPair.fromSecretKey(seedToBuffer(seed))
     : nacl.box.keyPair()
   // console.log('generateEncryptingKeyPair', { privateKey, publicKey })
-  publicKey = publicKeyFromBuffer(createX25519PublicKeySpkiBuffer(Buffer.from(publicKey)))
-  privateKey = privateKeyFromBuffer(createX25519PrivateKeyPkcs8Buffer(Buffer.from(privateKey)))
+  publicKey = signingPublicKeyFromBuffer(createX25519PublicKeySpkiBuffer(Buffer.from(publicKey)))
+  privateKey = signingPrivateKeyFromBuffer(createX25519PrivateKeyPkcs8Buffer(Buffer.from(privateKey)))
   // console.log('generateEncryptingKeyPair', { privateKey, publicKey })
   return { publicKey, privateKey }
 }
 
-export async function generateSigningKeyPair(seed){
-  let { publicKey, secretKey: privateKey } = seed
-    ? nacl.sign.keyPair.fromSeed(seedToBuffer(seed))
-    : nacl.sign.keyPair()
-  // console.log('generateSigningKeyPair', { publicKey, privateKey })
-  publicKey = publicKeyFromBuffer(createEd25519PublicKeySpkiBuffer(publicKey))
-  privateKey = privateKeyFromBuffer(createEd25519PrivateKeyPkcs8Buffer(privateKey))
-  // console.log('generateSigningKeyPair', { publicKey, privateKey })
-  return { publicKey, privateKey }
+
+function publicSigningKeyToUint8Array(publicKey){
+  return new Uint8Array(signingPublicKeyToBuffer(publicKey).buffer)
+}
+
+function privateSigningKeyToUint8Array(privateKey){
+  console.log('🔺 privateSigningKeyToUint8Array', {privateKey})
+  const buffer = signingPrivateKeyToBuffer(privateKey)
+  console.log('🔺 privateSigningKeyToUint8Array', {buffer})
+  const uint8Array = new Uint8Array(buffer.buffer)
+  console.log('🔺 privateSigningKeyToUint8Array', {uint8Array})
+  return uint8Array
 }
 
 // Magic ChatGPT wrote for me :D
@@ -68,6 +117,7 @@ function createX25519PublicKeySpkiBuffer(publicKeyBuffer) {
   ])
 }
 function createX25519PrivateKeyPkcs8Buffer(privateKeyBuffer) {
+  console.log('createX25519PrivateKeyPkcs8Buffer', { privateKeyBuffer })
   return Buffer.concat([
     Buffer.from('302e020100300506032b656e042204', 'hex'),
     privateKeyBuffer,
@@ -94,27 +144,46 @@ export function privateKeyJwkToPublicKeyJwk(privateKeyJwk) {
 }
 
 
-export function publicKeyToBuffer(publicKey){
+export function signingPublicKeyToBuffer(publicKey){
   return publicKey.export({
     type: 'spki',
     format: 'der',
   })
 }
-export function privateKeyToBuffer(privateKey){
+export function signingPrivateKeyToBuffer(privateKey){
   return privateKey.export({
     type: 'pkcs8',
     format: 'der',
   })
 }
 
-export function publicKeyFromBuffer(publicKeyBuffer){
+export function signingPublicKeyFromBuffer(publicKeyBuffer){
   return crypto.createPublicKey({
     key: publicKeyBuffer,
     type: 'spki',
     format: 'der',
   })
 }
-export function privateKeyFromBuffer(privateKeyBuffer){
+export function signingPrivateKeyFromBuffer(privateKeyBuffer){
+  return crypto.createPrivateKey({
+    key: privateKeyBuffer,
+    type: 'pkcs8',
+    format: 'der',
+  })
+}
+
+
+export function encryptingPublicKeyFromBuffer(publicKeyBuffer){
+  return crypto.createPublicKey({
+    key: publicKeyBuffer,
+    type: 'spki',
+    format: 'der',
+  })
+}
+export function encryptingPrivateKeyFromBuffer(privateKeyBuffer){
+  console.log({ privateKeyBuffer })
+  console.log(privateKeyBuffer.toString('hex'))
+  console.log(privateKeyBuffer.length)
   return crypto.createPrivateKey({
     key: privateKeyBuffer,
     type: 'pkcs8',
