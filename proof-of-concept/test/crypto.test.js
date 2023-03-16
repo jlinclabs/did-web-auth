@@ -1,6 +1,7 @@
 import test from 'brittle'
 import {
   generateSigningKeyPair,
+  generateEncryptingKeyPair,
   publicKeyToJKW,
   privateKeyToJKW,
   publicKeyFromJKW,
@@ -9,7 +10,7 @@ import {
   createJWS,
 } from '../crypto.js'
 
-test('generate keys from seed', async t => {
+test('generate signing keys from seed', async t => {
   const kp1 = await generateSigningKeyPair('seed one')
   t.alike(
     publicKeyToJKW(kp1.publicKey),
@@ -28,21 +29,24 @@ test('generate keys from seed', async t => {
       kty: 'OKP',
     }
   )
-  const kp2 = await generateSigningKeyPair('seed two')
+})
+
+test('generate encrypting keys from seed', async t => {
+  const kp1 = await generateEncryptingKeyPair('seed one')
   t.alike(
-    publicKeyToJKW(kp2.publicKey),
+    publicKeyToJKW(kp1.publicKey),
     {
       crv: 'Ed25519',
-      x: '19EcNkJdcqM0_K8qY0nWnzQvkYtB4T7WB0kC4aRUHtE',
+      x: 'Odqt3JEB83JgwD1oGzv9lavRV0XxI4231BtzU5X1t4o',
       kty: 'OKP',
     }
   )
   t.alike(
-    privateKeyToJKW(kp2.privateKey),
+    privateKeyToJKW(kp1.privateKey),
     {
       crv: 'Ed25519',
-      d: 'c2VlZCB0d28AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
-      x: '19EcNkJdcqM0_K8qY0nWnzQvkYtB4T7WB0kC4aRUHtE',
+      d: 'c2VlZCBvbmUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+      x: 'Odqt3JEB83JgwD1oGzv9lavRV0XxI4231BtzU5X1t4o',
       kty: 'OKP',
     }
   )
