@@ -75,29 +75,73 @@ test.solo('crypto smoke', async t => {
 
   // CONVERTING HEX BACK TO SIGNING KEY OBJECTS
   t.alike(signing.publicKey, crypto.createPublicKey({ key: Buffer.from(signing.publicKeyHex, 'hex'), type: 'spki', format: 'der' }))
-  t.alike(signing.privateKey, crypto.createPublicKey({ key: Buffer.from(signing.privateKeyHex, 'hex'), type: 'pkcs8', format: 'der' }))
+  t.alike(signing.privateKey, crypto.createPrivateKey({ key: Buffer.from(signing.privateKeyHex, 'hex'), type: 'pkcs8', format: 'der' }))
 
   console.log({ signing })
 
-  const signing2 = ed25519.generateKeyPair()
-  signing2.publicKeyU8 = signing2.publicKey
-  signing2.privateKeyU8 = signing2.secretKey
-  delete signing2.publicKey
-  delete signing2.secretKey
-  signing2.publicKeyHex = Buffer.concat([
-    DER_PREFIX_ED25519_PUBLIC,
-    Buffer.from(signing2.publicKeyU8),
-  ]).toString('hex')
-  signing2.privateKeyHex = Buffer.concat([
-    DER_PREFIX_ED25519_PRIVATE,
-    Buffer.from(signing2.privateKeyU8),
-  ]).toString('hex')
-  signing2.publicKeyBuffer = Buffer.from(signing2.publicKeyHex, 'hex')
-  signing2.privateKeyBuffer = Buffer.from(signing2.privateKeyHex, 'hex')
+  // const signing2 = ed25519.generateKeyPair()
+  // signing2.publicKeyU8 = signing2.publicKey
+  // signing2.privateKeyU8 = signing2.secretKey
+  // delete signing2.publicKey
+  // delete signing2.secretKey
+  // signing2.publicKeyHex = Buffer.concat([
+  //   DER_PREFIX_ED25519_PUBLIC,
+  //   Buffer.from(signing2.publicKeyU8),
+  // ]).toString('hex')
+  // signing2.privateKeyHex = Buffer.concat([
+  //   DER_PREFIX_ED25519_PRIVATE,
+  //   Buffer.from(signing2.privateKeyU8),
+  // ]).toString('hex')
+  // signing2.publicKeyBuffer = Buffer.from(signing2.publicKeyHex, 'hex')
+  // signing2.privateKeyBuffer = Buffer.from(signing2.privateKeyHex, 'hex')
 
-  signing2.publicKey = crypto.createPublicKey({ key: signing2.publicKeyBuffer, type: 'spki', format: 'der' })
-  signing2.privateKey = crypto.createPublicKey({ key: signing2.privateKeyBuffer, type: 'pkcs8', format: 'der' })
-  console.log({ signing2 })
+  // signing2.publicKey = crypto.createPublicKey({ key: signing2.publicKeyBuffer, type: 'spki', format: 'der' })
+  // signing2.privateKey = crypto.createPublicKey({ key: signing2.privateKeyBuffer, type: 'pkcs8', format: 'der' })
+  // signing2.publicJWK = await jose.exportJWK(signing2.publicKey)
+  // signing2.privateJWK = await jose.exportJWK(signing2.privateKey)
+  // console.log({ signing2 })
+
+  // console.log('SAME SAME??', {
+  //   publicKeyU8: signing2.publicKeyU8,
+  //   publicKeyU8AsHex: Buffer.from(signing2.publicKeyU8).toString('hex'),
+  //   publicKeyHex: signing2.publicKeyHex,
+  //   publicKeyBuffer: signing2.publicKeyBuffer,
+  //   // publicKeyBufferStripped: Buffer.from(signing2.publicKeyBuffer).slice(6),
+  //   publicKeyBufferAsHex: Buffer.from(signing2.publicKeyBuffer).toString('hex'),
+  //   publicKeyBufferAsHexStripped: Buffer.from(signing2.publicKeyBuffer).toString('hex').replace(DER_PREFIX_ED25519_PUBLIC.toString('hex'), ''),
+  // })
+
+  const encrypting = {}
+  encrypting.publicKeyU8 = ed25519.convertPublicKeyToX25519(
+    new Uint8Array(
+      Buffer.from(
+        Buffer.from(signing.publicKeyBuffer).toString('hex').replace(DER_PREFIX_ED25519_PUBLIC.toString('hex'), ''),
+        'hex'
+      )
+    )
+  )
+  encrypting.privateKeyU8 = ed25519.convertSecretKeyToX25519(
+    new Uint8Array(
+      Buffer.from(
+        Buffer.from(signing.privateKeyBuffer).toString('hex').replace(DER_PREFIX_ED25519_PRIVATE.toString('hex'), ''),
+        'hex'
+      )
+    )
+  )
+  encrypting.publicKeyHex = Buffer.concat([
+    DER_PREFIX_X25519_PUBLIC,
+    Buffer.from(encrypting.publicKeyU8),
+  ]).toString('hex')
+  encrypting.privateKeyHex = Buffer.concat([
+    DER_PREFIX_X25519_PRIVATE,
+    Buffer.from(encrypting.privateKeyU8),
+  ]).toString('hex')
+
+  encrypting.publicKey = crypto.createPublicKey({ key: Buffer.from(signing.publicKeyHex, 'hex'), type: 'spki', format: 'der' })
+  encrypting.privateKey = crypto.createPrivateKey({ key: Buffer.from(signing.privateKeyHex, 'hex'), type: 'pkcs8', format: 'der' })
+
+  console.log({ encrypting })
+
 
   // CONVERT ed25519 to X25519
   // const encrypting2 = crypto.generateKeyPairSync('x25519')
@@ -116,36 +160,38 @@ test.solo('crypto smoke', async t => {
 
   // console.log('signing.publicKeyBuffer', Buffer.from(signing.publicKeyBuffer).slice(6).toString('hex'))
   // console.log('signing.publicKeyBuffer', signing.publicKeyBuffer.toString('hex'))
-  const encrypting = {
-    publicKeyBuffer: Buffer.from(
-      ed25519.convertPublicKeyToX25519(
-        // new Uint8Array(signing.publicKeyBuffer.buffer)
-        // new Uint8Array(signing.publicKeyBuffer)
-        // signing.publicKeyBuffer.slice(32)
-        // publicBytes
+  // const encrypting = {
+  //   publicKeyBuffer: Buffer.from(
+  //     ed25519.convertPublicKeyToX25519(
+  //       // new Uint8Array(signing.publicKeyBuffer.buffer)
+  //       // new Uint8Array(signing.publicKeyBuffer)
+  //       // signing.publicKeyBuffer.slice(32)
+  //       // publicBytes
 
-        // u8a.fromString(signing.publicKeyBuffer.slice(6).toString('hex'), 'base16')
-        signing2.publicKeyU8
-      )
-    ),
-    privateKeyBuffer: Buffer.from(
-      ed25519.convertSecretKeyToX25519(
-        // new Uint8Array(signing.publicKeyBuffer.buffer)
-        // new Uint8Array(signing.publicKeyBuffer)
-        // signing.publicKeyBuffer.slice(32)
-        // publicBytes
-        // u8a.fromString(signing.privateKeyBuffer.slice(4).toString('hex'), 'base16')
-        signing2.privateKeyU8
-      )
-    ),
-  }
-  console.log({ encrypting })
-  encrypting.publicKey = await jose.importJWK({
-    kty: 'OKP',
-    crv: 'X25519',
-    x: base64url.encode(encrypting.publicKeyBuffer),
-  })
-  console.log({ encrypting })
+  //       // u8a.fromString(signing.publicKeyBuffer.slice(6).toString('hex'), 'base16')
+  //       // new Uint8Array(signing2.publicKeyBuffer)
+
+
+  //     )
+  //   ),
+  //   // privateKeyBuffer: Buffer.from(
+  //   //   ed25519.convertSecretKeyToX25519(
+  //   //     // new Uint8Array(signing.publicKeyBuffer.buffer)
+  //   //     // new Uint8Array(signing.publicKeyBuffer)
+  //   //     // signing.publicKeyBuffer.slice(32)
+  //   //     // publicBytes
+  //   //     // u8a.fromString(signing.privateKeyBuffer.slice(4).toString('hex'), 'base16')
+  //   //     signing2.privateKeyU8
+  //   //   )
+  //   // ),
+  // }
+  // console.log({ encrypting })
+  // encrypting.publicKey = await jose.importJWK({
+  //   kty: 'OKP',
+  //   crv: 'X25519',
+  //   x: base64url.encode(encrypting.publicKeyBuffer),
+  // })
+  // console.log({ encrypting })
 
   // encrypting.privateKey = await jose.importJWK({
   //   privateKey: ed25519.convertSecretKeyToX25519(
@@ -153,9 +199,9 @@ test.solo('crypto smoke', async t => {
   //     u8a.fromString(signing.privateKeyBuffer.slice(6).toString('hex'), 'base16')
   //   ),
   // }
-  console.log({ encrypting })
+  // console.log({ encrypting })
 
-  throw new Error('DOES KEY CONVERSION WORK!?!?')
+  // throw new Error('DOES KEY CONVERSION WORK!?!?')
 
   // CREATE A JWS
   let jws
