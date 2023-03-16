@@ -127,7 +127,11 @@ routes.post('/signin', async (req, res, next) => {
   }
   if (email){
     // you could lookup a user by this email at this point
-    const redirectUrl = await tryDidWebAuth(emailUsername, emailHost)
+    const redirectUrl = await tryDidWebAuth({
+      username: emailUsername,
+      host: emailHost,
+      appSigningKeyPair: req.app.signingKeyPair,
+    })
     if (redirectUrl) return res.redirect(redirectUrl)
 
     return renderSigninPage({
@@ -138,7 +142,7 @@ routes.post('/signin', async (req, res, next) => {
 
 })
 
-async function tryDidWebAuth(username, host){
+async function tryDidWebAuth({ username, host, appSigningKeyPair }){
   const hostDid = `did:web:${host}`
   const did = `did:web:${host}:u:${username}`
   const hostDidDocumentUrl = new URL(`https://${host}/.well-knwown/did.json`)
@@ -179,12 +183,12 @@ async function tryDidWebAuth(username, host){
       did,
       now: Date.now(),
     }
-    const jws = createJWS({
+    const jws = await createJWS({
       payload: {
 
       },
       signers: [
-        hostPrivateKey
+        appSigningKeyPair.privateKey
       ]
     })
 

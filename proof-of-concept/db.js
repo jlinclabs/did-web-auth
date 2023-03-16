@@ -21,13 +21,7 @@ const db = {
     return await knex.select('*').from('sessions')
   },
   async getAllUsers(){
-    return await knex.select('*').from('users').then(users =>
-      users.map(user => ({
-        ...user,
-        public_key: JSON.parse(user.public_key),
-        private_key: JSON.parse(user.private_key),
-      }))
-    )
+    return await knex.select('*').from('users')
   },
   async createUser({ username, password }){
     const passwordHash = await bcrypt.hash(password, 10)
