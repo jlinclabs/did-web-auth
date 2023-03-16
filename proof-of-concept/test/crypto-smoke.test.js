@@ -13,25 +13,15 @@ const DER_PREFIX_X25519_PRIVATE  = Buffer.from('302e020100300506032b656e042204',
 const PublicKeyObject = crypto.generateKeyPairSync('ed25519').publicKey.constructor
 const PrivateKeyObject = crypto.generateKeyPairSync('ed25519').privateKey.constructor
 
-// publicKeyHex:  '302a300506032b65700321005da461af429b5a9f993f4e770d5cc48c08fb882dd82e76e7dcebf5e69daa4c94',
-// privateKeyHex: '302e020100300506032b65700422042088165832a9244f5688b8d1b6d92b0deca1c66c3c95168e1df4aa9ac95958541c'
 function isSamePublicKeyObject(a, b){
-  console.log({ a, b })
   if (!(a instanceof PublicKeyObject)) throw new Error(`first argument is not an instance of PublicKeyObject`)
   if (!(b instanceof PublicKeyObject)) throw new Error(`second argument is not an instance of PublicKeyObject`)
   if (a === b) return true
-
   a = a.export({ type: 'spki', format: 'der' })
   b = b.export({ type: 'spki', format: 'der' })
-  console.log({ a, b })
   return a.equals(b)
-  // if (
-  //   typeof a !== typeof b
-  // ) return false
-  // return false
 }
 function isSamePrivateKeyObject(a, b){
-  console.log({ a, b })
   if (!(a instanceof PrivateKeyObject)) throw new Error(`first argument is not an instance of PrivateKeyObject`)
   if (!(b instanceof PrivateKeyObject)) throw new Error(`second argument is not an instance of PrivateKeyObject`)
   if (a === b) return true
@@ -130,17 +120,66 @@ test.solo('crypto smoke', async t => {
   )
   encrypting.publicKeyHex = Buffer.concat([
     DER_PREFIX_X25519_PUBLIC,
+    // Buffer.from(''),
     Buffer.from(encrypting.publicKeyU8),
   ]).toString('hex')
   encrypting.privateKeyHex = Buffer.concat([
     DER_PREFIX_X25519_PRIVATE,
+    // Buffer.from(''),
     Buffer.from(encrypting.privateKeyU8),
   ]).toString('hex')
 
-  encrypting.publicKey = crypto.createPublicKey({ key: Buffer.from(signing.publicKeyHex, 'hex'), type: 'spki', format: 'der' })
-  encrypting.privateKey = crypto.createPrivateKey({ key: Buffer.from(signing.privateKeyHex, 'hex'), type: 'pkcs8', format: 'der' })
+  encrypting.publicJwk = {
+    kty: 'OKP',
+    // crv: 'Ed25519',
+    crv: 'X25519',
+    // x: base64url.encode(Buffer.from(encrypting.publicKeyHex, 'hex')).replace(/^u/, ''),
+    x: base64url.encode(Buffer.from(encrypting.publicKeyU8)).replace(/^u/, ''),
+  }
+  // console.log({ 'signing.publicJwk': signing.publicJwk })
+  // console.log({ jwk })
+  // console.log('DECODE signing.publicJwk.x', Buffer.from( base64url.decode('u'+signing.publicJwk.x)).toString('hex'))
+  // console.log('DECODE jwk.x', Buffer.from( base64url.decode('u'+jwk.x)).toString('hex'))
+  encrypting.publicKey = await jose.importJWK(encrypting.publicJwk, 'EdDSA')
+  console.log('IMPORTED JWK x25519', encrypting.publicKey)
+  console.log('IMPORTED JWK x25519 as HEX', encrypting.publicKey.export({ type: 'spki', format: 'der' }).toString('hex'))
+  // encrypting.privateJWK, await jose.importJWK({}, 'EdDSA')
+  // encrypting.publicKey = crypto.createPublicKey({ key: Buffer.from(signing.publicKeyHex, 'hex'), type: 'spki', format: 'der' })
+  // encrypting.privateKey = crypto.createPrivateKey({ key: Buffer.from(signing.privateKeyHex, 'hex'), type: 'pkcs8', format: 'der' })
+  // t.is(encrypting.publicKey.asymmetricKeyDetails, [])
+  // t.is(encrypting.publicKey.asymmetricKeyType, 'X25519')
+
 
   console.log({ encrypting })
+  console.log({
+    'encrypting.publicKey.asymmetricKeyDetails': encrypting.publicKey.asymmetricKeyDetails,
+    'encrypting.publicKey.asymmetricKeyType': encrypting.publicKey.asymmetricKeyType,
+  })
+
+  // encrypting.publicJwk = await jose.exportJWK(encrypting.publicKey)
+  // encrypting.privateJwk = await jose.exportJWK(encrypting.privateKey)
+  // encrypting.publicJwk
+  // encrypting.privateJwk
+  // t.ok(isSamePublicKeyObject(signing.publicKey, await jose.importJWK(signing.publicJwk, 'EdDSA')))
+  // t.ok(isSamePrivateKeyObject(signing.privateKey, await jose.importJWK(signing.privateJwk, 'EdDSA')))
+
+  // // CONVERTING JWKs BACK TO SIGNING KEY OBJECTS
+  // t.ok(isSamePublicKeyObject(signing.publicKey, await jose.importJWK(signing.publicJwk, 'EdDSA')))
+  // t.ok(isSamePrivateKeyObject(signing.privateKey, await jose.importJWK(signing.privateJwk, 'EdDSA')))
+
+  // console.log({ encrypting })
+
+  const keyPair = crypto.generateKeyPairSync('x25519')
+  console.log('EXAMPLE JWKs for x25519 keypair', {
+    publicJwk: await jose.exportJWK(keyPair.publicKey),
+    privateJwk: await jose.exportJWK(keyPair.privateKey),
+  })
+
+  // console.log({
+  //   publicKey: keyPair.publicKey,
+  //   'publicKey instance of KeyObject': keyPair.publicKey instanceof crypto.KeyObject,
+  //   'publicKey.asymmetricKeyType': keyPair.publicKey.asymmetricKeyType,
+  // })
 
 
   // CONVERT ed25519 to X25519
@@ -230,6 +269,11 @@ test.solo('crypto smoke', async t => {
     })
   }
 
+  console.log('KEY???',  {
+    publicKey: encrypting.publicKey,
+    asymmetricKeyType: encrypting.publicKey.asymmetricKeyType,
+  })
+
 
   // CREATE A JWE
   let jwe
@@ -240,7 +284,11 @@ test.solo('crypto smoke', async t => {
         JSON.stringify(payload)
       )
     )
-      .setProtectedHeader({ alg: 'EdDSA', enc: 'A256GCM' })
+      .setProtectedHeader({
+        alg: 'ECDH-ES',
+        // alg: 'Ed25519',
+        enc: 'A256GCM'
+      })
       .addRecipient(encrypting.publicKey)
 
     jwe = await proto.encrypt()
