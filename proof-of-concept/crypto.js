@@ -157,3 +157,10 @@ export async function createJWS({ payload, signers }){
   const jws = await proto.sign()
   return jws
 }
+
+export async function verifyJWS({ jws, publicKey }){
+  const { payload, protectedHeader } = await jose.generalVerify(jws, publicKey)
+  const data = JSON.parse(new TextDecoder().decode(payload))
+  // console.log({ protectedHeader, data })
+  return data
+}

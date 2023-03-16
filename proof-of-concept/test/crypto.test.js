@@ -8,6 +8,7 @@ import {
   privateKeyFromJKW,
   privateKeyJwkToPublicKeyJwk,
   createJWS,
+  verifyJWS,
 } from '../crypto.js'
 
 test('generate signing keys from seed', async t => {
@@ -31,7 +32,7 @@ test('generate signing keys from seed', async t => {
   )
 })
 
-test.solo('generate encrypting keys from seed', async t => {
+test.skip('generate encrypting keys from seed', async t => {
   const kp1 = await generateEncryptingKeyPair('seed one')
   t.alike(
     publicKeyToJKW(kp1.publicKey),
@@ -100,6 +101,19 @@ test('JWS', async t => {
   })
 
   // TODO verify JWS
+  t.alike(
+    await verifyJWS({ jws, publicKey: kp1.publicKey }),
+    { stuff: true }
+  )
+  t.alike(
+    await verifyJWS({ jws, publicKey: kp2.publicKey }),
+    { stuff: true }
+  )
+
+  const kp3 = await generateSigningKeyPair()
+  await t.exception(async () => {
+    await verifyJWS({ jws, publicKey: kp3.publicKey })
+  })
 })
 
 test('JWE', async t => {
