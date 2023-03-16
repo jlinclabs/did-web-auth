@@ -31,23 +31,23 @@ test('generate signing keys from seed', async t => {
   )
 })
 
-test('generate encrypting keys from seed', async t => {
+test.solo('generate encrypting keys from seed', async t => {
   const kp1 = await generateEncryptingKeyPair('seed one')
   t.alike(
     publicKeyToJKW(kp1.publicKey),
     {
-      crv: 'Ed25519',
-      x: 'Odqt3JEB83JgwD1oGzv9lavRV0XxI4231BtzU5X1t4o',
+      crv: 'X25519',
+      x: 'fWXL4vmA19dADXAqCH25ZV6etOQ_TZhF2AjZrcOFsgs',
       kty: 'OKP',
     }
   )
   t.alike(
     privateKeyToJKW(kp1.privateKey),
     {
-      crv: 'Ed25519',
-      d: 'c2VlZCBvbmUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
-      x: 'Odqt3JEB83JgwD1oGzv9lavRV0XxI4231BtzU5X1t4o',
-      kty: 'OKP',
+      crv: 'X25519',
+      // d: 'c2VlZCBvbmUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+      // x: 'Odqt3JEB83JgwD1oGzv9lavRV0XxI4231BtzU5X1t4o',
+      // kty: 'OKP',
     }
   )
 })

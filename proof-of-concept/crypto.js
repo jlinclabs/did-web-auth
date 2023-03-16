@@ -27,43 +27,24 @@ function seedToBuffer(seed){
 }
 
 export async function generateEncryptingKeyPair(seed){
-  let { publicKey, secretKey: privateKey } = nacl.box.keyPair.fromSecretKey(seedToBuffer(seed))
-  // console.log({ keyPair })
-  // const { publicKey, secretKey: privateKey } = await generateKeyPair('x25519')
-  console.log({ privateKey, publicKey })
-  publicKey = publicKeyFromBuffer(createX25519PublicKeySpkiBuffer(publicKey))
-  privateKey = privateKeyFromBuffer(createX25519PrivateKeyPkcs8Buffer(privateKey))
-  console.log({ privateKey, publicKey })
-
-  // seed = seedToBuffer(seed)
-  // let { publicKey, privateKey } = forge.pki.x25519
-  //   .generateKeyPair({ seed })
-  // publicKey = publicKeyFromBuffer(createEd25519PublicKeySpkiBuffer(publicKey))
-  // privateKey = privateKeyFromBuffer(createEd25519PrivateKeyPkcs8Buffer(privateKey))
-
+  let { publicKey, secretKey: privateKey } = seed
+    ? nacl.box.keyPair.fromSecretKey(seedToBuffer(seed))
+    : nacl.box.keyPair()
+  // console.log('generateEncryptingKeyPair', { privateKey, publicKey })
+  publicKey = publicKeyFromBuffer(createX25519PublicKeySpkiBuffer(Buffer.from(publicKey)))
+  privateKey = privateKeyFromBuffer(createX25519PrivateKeyPkcs8Buffer(Buffer.from(privateKey)))
+  // console.log('generateEncryptingKeyPair', { privateKey, publicKey })
   return { publicKey, privateKey }
 }
 
 export async function generateSigningKeyPair(seed){
-
   let { publicKey, secretKey: privateKey } = seed
     ? nacl.sign.keyPair.fromSeed(seedToBuffer(seed))
     : nacl.sign.keyPair()
-  // console.log({ publicKey, privateKey })
-  // publicKey = publicKeyFromBuffer(publicKey)
-  // privateKey = privateKeyFromBuffer(privateKey)
-  // console.log({ publicKey, privateKey })
-
-  // // node's crypto.generateKeyPair has no way to provide a seed
-  // // const generateKeyPair = promisify(crypto.generateKeyPair).bind(null, 'ed25519')
-  // // const { publicKey, privateKey } = await generateKeyPair()
-  // seed = seedToBuffer(seed)
-  // let { publicKey, privateKey } = forge.pki.ed25519
-  //   .generateKeyPair({ seed })
-
+  // console.log('generateSigningKeyPair', { publicKey, privateKey })
   publicKey = publicKeyFromBuffer(createEd25519PublicKeySpkiBuffer(publicKey))
   privateKey = privateKeyFromBuffer(createEd25519PrivateKeyPkcs8Buffer(privateKey))
-  // console.log({ publicKey, privateKey })
+  // console.log('generateSigningKeyPair', { publicKey, privateKey })
   return { publicKey, privateKey }
 }
 
@@ -93,16 +74,14 @@ function createX25519PrivateKeyPkcs8Buffer(privateKeyBuffer) {
   ])
 }
 function ed25519PublicJwkToSpkiBuffer(jwk) {
-  return Buffer.concat([
-    Buffer.from('302a300506032b6570032100', 'hex'),
-    Buffer.from(jwk.x, 'base64'),
-  ])
+  return createEd25519PublicKeySpkiBuffer(
+    Buffer.from(jwk.x, 'base64')
+  )
 }
 function ed25519PrivateJwkToPkcs8Buffer(jwk) {
-  return Buffer.concat([
-    Buffer.from('302e020100300506032b657004220420', 'hex'),
-    Buffer.from(jwk.d, 'base64'),
-  ])
+  return createEd25519PrivateKeyPkcs8Buffer(
+    Buffer.from(jwk.d, 'base64')
+  )
 }
 export function privateKeyJwkToPublicKeyJwk(privateKeyJwk) {
   return {
