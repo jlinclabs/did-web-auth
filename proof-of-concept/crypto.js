@@ -8,12 +8,48 @@ const generateKeyPair = promisify(crypto.generateKeyPair).bind(null, 'ed25519')
 export { generateKeyPair }
 
 
+export function keyBufferToString(buffer){
+  return base58btc.encode(buffer)
+}
+
+export function keyToBuffer(string){
+  return base58btc.decode(string)
+}
+
 export async function generateSigningKeyPair(seed){
   const hash = seed
     ? crypto.createHash('sha256').update(seed).digest()
     : crypto.randomBytes(32)
 
-  const { privateKey, publicKey } = ed25519.MakeKeypair(hash)
+  const { publicKey, privateKey } = ed25519.MakeKeypair(hash)
+  return {
+    publicKey: keyBufferToString(publicKey),
+    privateKey: keyBufferToString(privateKey),
+  }
+
+  // publicKey = crypto.createPublicKey({
+  //   key: publicKey,
+  //   format: 'der',
+  //   type: 'spki',
+  // })
+  // console.log({ publicKey })
+
+  // const { publicKey, privateKey } = crypto.generateKeyPairSync(
+  //   'ed25519',
+  //   {
+  //     publicKeyEncoding: {
+  //       type: 'spki',
+  //       format: 'jwk'
+  //     },
+  //     privateKeyEncoding: {
+  //       type: 'pkcs8',
+  //       format: 'jwk',
+  //       cipher: 'aes-256-cbc',
+  //       passphrase: seed
+  //     }
+  //   }
+  // )
+
 
   // crypto.subtle.importKey(
   //   'raw', // format of the key data
@@ -25,18 +61,45 @@ export async function generateSigningKeyPair(seed){
   return { publicKey, privateKey }
 }
 
-const keyToJWK = key => jose.exportJWK(key)
-export { keyToJWK }
 
-const JWKToKey = jwk => jose.importJWK(jwk)
-export { JWKToKey }
 
-// export function keyToString(key){
-//   return base58btc.encode(key)
+// const keyToJWK = key => jose.exportJWK(key)
+// export { keyToJWK }
+
+// const JWKToKey = jwk => jose.importJWK(jwk)
+// export { JWKToKey }
+
+// export function publicKeyToJWK(publicKey){
+//   return publicKey.export({ type: 'spki', format: 'jwk' })
 // }
-// export function base5String(key){
-//   return base58btc.encode(key)
+// export function privateKeyToJWK(privateKey){
+//   return privateKey.export({ type: 'pkcs8', format: 'jwk' })
 // }
+// export function publicKeyToString(object){
+//   return base58btc.encode(object)
+// }
+// export function publicKeyToObject(string){
+//   return crypto.createPublicKey(string)
+// }
+// export function privateKeyToString(object){
+//   return base58btc.encode(object)
+// }
+// export function privateKeyToObject(string){
+//   return crypto.createPrivateKey(string)
+// }
+
+//   // Convert the public key to a string
+//   const publicKeyString = publicKey.export({ type: 'spki', format: 'pem' }).toString('utf8');
+
+//   // Convert the private key to a string
+//   const privateKeyString = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString('utf8');
+
+// }
+export function base5String(key){
+  return base58btc.encode(key)
+}
+
+
 
 
 export function publicKeyToBase58(publicKey){
