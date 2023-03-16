@@ -24,18 +24,24 @@ routes.use(async (req, res, next) => {
 homepage route
 */
 routes.get('/.well-knwown/did.json', async (req, res, next) => {
-  const hostPublicKey = db.getHostPublicKey()
+  // const hostPublicKey = db.getHostPublicKey()
+  const { signingKeyPair, host } = req.app
+  // console.log({ signingKeyPair, host })
+  const did = `did:web:${host}`
   res.json({
+    "@context": [
+      "https://www.w3.org/ns/did/v1",
+      "https://w3id.org/security/suites/jws-2020/v1"
+    ],
     "id": `did:web:${req.hostname}`,
-    "publicKey": [
+    "verificationMethod": [
       {
         "id": `${did}#keys-1`,
-        // "type": "Ed25519VerificationKey2018",
-        "type": `${user.public_key.crv}VerificationKey2018`,
+        "type": "Ed25519VerificationKey2018",
         // "controller": `${did}`,
         "controller": `did:web:${host}`,
         // "publicKeyBase58": "Gj7X9iYzY5zkh3qsiwMfzF8hSZ5f67Ft7RGxmvhDfdjC"
-        "publicKeyBase58": publicKeyToBase58(hostPublicKey),
+        "publicKeyBase58": publicKeyToBase58(signingKeyPair.publicKey),
       }
     ],
     "services": [
@@ -262,12 +268,12 @@ routes.get('/u/:username/did.json', async (req, res, next) => {
     "publicKey": [
       {
         "id": `${did}#keys-1`,
-        // "type": "Ed25519VerificationKey2018",
-        "type": `${user.public_key.crv}VerificationKey2018`,
+        "type": "Ed25519VerificationKey2018",
+        // "type": `${user.public_key.crv}VerificationKey2018`,
         // "controller": `${did}`,
         "controller": `did:web:${host}`,
         // "publicKeyBase58": "Gj7X9iYzY5zkh3qsiwMfzF8hSZ5f67Ft7RGxmvhDfdjC"
-        "publicKeyBase58": publicKeyToBase58(user.public_key),
+        "publicKeyBase58": publicKeyToBase58(user.signing_public_key),
       }
     ],
     "authentication": [

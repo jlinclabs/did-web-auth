@@ -3,6 +3,7 @@ import bodyParser from 'body-parser'
 import { create } from 'express-handlebars'
 import toColor from '@mapbox/to-color'
 
+import { generateSigningKeyPair } from './crypto.js'
 import { sessionRoutes } from './session.js'
 import routes from './routes.js'
 const app = express()
@@ -46,6 +47,8 @@ app.start = async function start(){
   app.locals.host = host
   app.locals.port = port
   app.locals.appColor = appColor
+  app.host = host
+  app.signingKeyPair = await generateSigningKeyPair(`${host} has some secrets`)
   return new Promise((resolve, reject) => {
     app.server = app.listen(port, error => {
       if (error) reject(error)

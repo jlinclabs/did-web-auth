@@ -1,7 +1,7 @@
 import Knex from 'knex'
 import bcrypt from 'bcrypt'
 
-import { generateKeyPair, keyToJWK, JWKToKey } from './crypto.js'
+import { generateSigningKeyPair, keyToJWK, JWKToKey } from './crypto.js'
 
 const knex = Knex({
   client: 'better-sqlite3',
@@ -31,14 +31,17 @@ const db = {
   },
   async createUser({ username, password }){
     const passwordHash = await bcrypt.hash(password, 10)
-    const { publicKey, privateKey } = await generateKeyPair()
+    const { publicKey, privateKey } = await generateSigningKeyPair()
+
     const [user] = await knex
       .insert({
         created_at: new Date,
         username,
         password_hash: passwordHash,
-        public_key: await keyToJWK(publicKey),
-        private_key: await keyToJWK(privateKey),
+        // public_key: await keyToJWK(publicKey),
+        // private_key: await keyToJWK(privateKey),
+        signing_public_key: publicKey.toString('hex'),
+        signing_private_key: privateKey.toString('hex'),
       })
       .into('users')
       .returning('id')
@@ -53,7 +56,7 @@ const db = {
 
   async getUserById({
     id,
-    select = ['id', 'username', 'created_at', 'public_key'],
+    select = ['id', 'username', 'created_at', 'signing_public_key'],
   }){
     return await knex
       .select(select)
@@ -65,7 +68,7 @@ const db = {
 
   async getUserByUsername({
     username,
-    select = ['id', 'username', 'created_at', 'public_key'],
+    select = ['id', 'username', 'created_at', 'signing_public_key'],
   }){
     return await knex
       .select(select)
@@ -87,15 +90,12 @@ const db = {
 export default db
 
 
-
-
-
 async function userRecordToUser(record){
   if (!record) return
   const user = {...record}
-  if (user.public_key)
-    // user.public_key = await JWKToKey(JSON.parse(user.public_key))
-    user.public_key = JSON.parse(user.public_key)
-
+  for (const prop of [
+    'signing_public_key', 'signing_private_key',
+    'encrypting_public_key', 'encrypting_private_key',
+  ]) user[prop] &&= Buffer.from(user[prop], 'hex')
   return user
 }

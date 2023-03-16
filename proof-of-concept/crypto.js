@@ -1,4 +1,5 @@
 import { promisify } from 'util'
+import ed25519 from 'ed25519'
 import crypto from 'crypto'
 import * as jose from 'jose'
 import { base58btc } from 'multiformats/bases/base58'
@@ -8,21 +9,11 @@ export { generateKeyPair }
 
 
 export async function generateSigningKeyPair(seed){
-  // Convert the seed string to a buffer
-  if (seed) seed = Buffer.from(seed, 'utf8')
+  const hash = seed
+    ? crypto.createHash('sha256').update(seed).digest()
+    : crypto.randomBytes(32)
 
-  // Generate the keypair from the seed
-  const { publicKey, privateKey } = crypto.sign.generateKeyPair('ed25519', {
-    privateKeyEncoding: {
-      type: 'pkcs8',
-      format: 'der',
-      // Set the seed as the private key
-      privateKey: seed
-    }
-  });
-
-  console.log('Public key:', publicKey.toString('hex'));
-  console.log('Private key:', privateKey.toString('hex'));
+  const { privateKey, publicKey } = ed25519.MakeKeypair(hash)
   return { publicKey, privateKey }
 }
 
@@ -32,11 +23,19 @@ export { keyToJWK }
 const JWKToKey = jwk => jose.importJWK(jwk)
 export { JWKToKey }
 
+// export function keyToString(key){
+//   return base58btc.encode(key)
+// }
+// export function base5String(key){
+//   return base58btc.encode(key)
+// }
+
 
 export function publicKeyToBase58(publicKey){
+  // console.log({ publicKey })
+  // const base64 = Buffer.from(publicKey.x, 'base64')
   console.log({ publicKey })
-  const base64 = Buffer.from(publicKey.x, 'base64')
-  return base58btc.encode(base64)
+  return base58btc.encode(publicKey)
 }
 
 export async function createJWS(data){
@@ -49,5 +48,3 @@ export async function createJWS(data){
     .sign()
   return jws
 }
-
-const hostSigningKeys = generateSigningKeyPair()
