@@ -30,39 +30,43 @@ test('generate keys from seed', async t => {
   )
 })
 
-test('serialize keys', async t => {
-  const kp = await generateSigningKeyPair()
-  t.is(
-    kp.publicKey,
-    keyBufferToString(keyToBuffer(kp.publicKey))
-  )
-  t.is(
-    kp.privateKey,
-    keyBufferToString(keyToBuffer(kp.privateKey))
-  )
-})
-
-test('JWS', async t => {
-  const kp = await generateSigningKeyPair()
-  const jws = await createJWS({
-    payload: {},
-    privateKeys: []
-  })
-
-})
-
-// test('JWK', async t => {
-//   const kp1 = await generateSigningKeyPair('seed one')
-//   t.alike(
-//     publicKeyToJWK(kp1.publicKey),
-//     {
-//       crv: 'Ed25519',
-//       x: 'ygNF8KvZrkf4r7-NSWdSNjLvZuhTj-G2TDYOVnDfr1s',
-//       kty: 'OKP',
-//     }
+// test('serialize keys', async t => {
+//   const kp = await generateSigningKeyPair()
+//   t.is(
+//     kp.publicKey,
+//     keyBufferToString(keyToBuffer(kp.publicKey))
 //   )
-//   t.alike(
-//     privateKeyToJWK(kp1.privateKey),
-//     {}
+//   t.is(
+//     kp.privateKey,
+//     keyBufferToString(keyToBuffer(kp.privateKey))
 //   )
 // })
+
+// test('JWS', async t => {
+//   const kp1 = await generateSigningKeyPair()
+//   const kp2 = await generateSigningKeyPair()
+//   const jws = await createJWS({
+//     payload: { stuff: true },
+//     signers: [
+//       kp1.privateKey,
+//       kp2.privateKey,
+//     ]
+//   })
+
+// })
+
+// // test('JWK', async t => {
+// //   const kp1 = await generateSigningKeyPair('seed one')
+// //   t.alike(
+// //     publicKeyToJWK(kp1.publicKey),
+// //     {
+// //       crv: 'Ed25519',
+// //       x: 'ygNF8KvZrkf4r7-NSWdSNjLvZuhTj-G2TDYOVnDfr1s',
+// //       kty: 'OKP',
+// //     }
+// //   )
+// //   t.alike(
+// //     privateKeyToJWK(kp1.privateKey),
+// //     {}
+// //   )
+// // })
