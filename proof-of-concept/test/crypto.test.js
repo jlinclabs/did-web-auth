@@ -33,7 +33,7 @@ test('generate signing keys from seed', async t => {
   )
 })
 
-test.solo('generate encrypting keys from seed', async t => {
+test('generate encrypting keys from seed', async t => {
   const skp1 = await generateSigningKeyPair('encryption test kp1')
   const ekp1 = await generateEncryptingKeyPairFromSigningKeyPair(skp1)
   console.log({ skp1, ekp1 })

@@ -3,14 +3,15 @@ import crypto from 'crypto'
 import { base64url } from 'multiformats/bases/base64'
 import { base58btc } from 'multiformats/bases/base58'
 import * as jose from 'jose'
-import ed25519 from '@stablelib/ed25519'
-import x25519 from '@stablelib/x25519'
+// import ed25519 from '@stablelib/ed25519'
+// import x25519 from '@stablelib/x25519'
+import sodium from 'sodium-native'
 // import nacl from 'tweetnacl'
 // TODO remove these
 // import ed25519 from 'ed25519'
 // import forge from 'node-forge'
 
-console.log({ ed25519 })
+// console.log({ sodium })
 const generateKeyPair = promisify(crypto.generateKeyPair) //.bind(null, 'ed25519')
 
 
@@ -23,37 +24,69 @@ const generateKeyPair = promisify(crypto.generateKeyPair) //.bind(null, 'ed25519
 // }
 
 function seedToBuffer(seed){
+  // var hash = crypto.createHash('sha256').update(bobsPassword).digest(); //returns a buffer
   if (!seed) return
-  const seedBuffer = Buffer.alloc(32)
+  const seedBuffer = Buffer.alloc(sodium.crypto_sign_SEEDBYTES)
   Buffer.from(seed).copy(seedBuffer)
   return seedBuffer
 }
 
 
 export async function generateSigningKeyPair(seed){
-  let { publicKey, secretKey: privateKey } = seed
-    ? ed25519.generateKeyPairFromSeed(seedToBuffer(seed))
-    : ed25519.generateKeyPair()
+  let publicKey = Buffer.alloc(sodium.crypto_sign_PUBLICKEYBYTES)
+  let privateKey = Buffer.alloc(sodium.crypto_sign_SECRETKEYBYTES)
+  if (seed){
+    seed = seedToBuffer(seed)
+    // sodium.crypto_sign_seed25519_keypair(pk, sk, seed)
+    sodium.crypto_sign_seed_keypair(publicKey, privateKey, seed)
+  }else{
+    sodium.crypto_sign_keypair(publicKey, privateKey)
+  }
+  console.log('generateSigningKeyPair (Buffers)', { publicKey, privateKey })
 
-  console.log('generateSigningKeyPair (Uint8Arrays)', { publicKey, privateKey })
+  // Prepend the X25519 public key buffer with the ASN.1 sequence
+  const publicKeyBuffer = Buffer.concat([
+    Buffer.from('3059301306072a8648ce3d020106082a8648ce3d030107034200', 'hex'),
+    publicKey
+  ]);
+
+  // Create a public key object using crypto.createPublicKey()
+  const publicKeyObject = crypto.createPublicKey({
+    key: publicKeyBuffer,
+    type: 'spki',
+    format: 'der',
+  })
+  console.log({ publicKeyObject })
+
+  throw new Error('NOT DONE YET!!')
+  // publicKey = signingPublicKeyFromBuffer(createEd25519PublicKeySpkiBuffer(publicKey))
+  // privateKey = signingPrivateKeyFromBuffer(createEd25519PrivateKeyPkcs8Buffer(privateKey))
+  // console.log('generateSigningKeyPair (objects)', { publicKey, privateKey })
   // let { publicKey, secretKey: privateKey } = seed
-  //   ? nacl.sign.keyPair.fromSeed(seedToBuffer(seed))
-  //   : nacl.sign.keyPair()
+  //   ? ed25519.generateKeyPairFromSeed(seedToBuffer(seed))
+  //   : ed25519.generateKeyPair()
+
+  // console.log('generateSigningKeyPair (Uint8Arrays)', { publicKey, privateKey })
+  // // let { publicKey, secretKey: privateKey } = seed
+  // //   ? nacl.sign.keyPair.fromSeed(seedToBuffer(seed))
+  // //   : nacl.sign.keyPair()
+  // // // console.log('generateSigningKeyPair', { publicKey, privateKey })
+
+  // const publicKeyAsUint8Array = publicKey
+  // const privateKeyAsUint8Array = privateKey
+
+
+  // publicKey = signingPublicKeyFromBuffer(createEd25519PublicKeySpkiBuffer(publicKey))
+  // privateKey = signingPrivateKeyFromBuffer(createEd25519PrivateKeyPkcs8Buffer(privateKey))
+  // console.log('generateSigningKeyPair (objects)', { publicKey, privateKey })
+
   // // console.log('generateSigningKeyPair', { publicKey, privateKey })
-
-  const publicKeyAsUint8Array = publicKey
-  const privateKeyAsUint8Array = privateKey
-
-
-  publicKey = signingPublicKeyFromBuffer(createEd25519PublicKeySpkiBuffer(publicKey))
-  privateKey = signingPrivateKeyFromBuffer(createEd25519PrivateKeyPkcs8Buffer(privateKey))
-  console.log('generateSigningKeyPair (objects)', { publicKey, privateKey })
-
-  // console.log('generateSigningKeyPair', { publicKey, privateKey })
   return { publicKey, privateKey }
 }
 
 export async function generateEncryptingKeyPairFromSigningKeyPair({ publicKey, privateKey }){
+  // sodium.crypto_sign_ed25519_pk_to_curve25519(Buffer.from(some-ed-key))
+
   publicKey = encryptingPublicKeyFromBuffer(
     createX25519PublicKeySpkiBuffer(
       ed25519.convertPublicKeyToX25519(
@@ -98,9 +131,13 @@ function privateSigningKeyToUint8Array(privateKey){
 }
 
 // Magic ChatGPT wrote for me :D
+const DER_PREFIX_ED25519_PUBLIC  = '302a300506032b656e032100'
+const DER_PREFIX_ED25519_PRIVATE = '302e020100300506032b657004220420'
+const DER_PREFIX_X25519_PUBLIC   = '302a300506032b6570032100'
+const DER_PREFIX_X25519_PRIVATE  = '302e020100300506032b656e042204'
 function createEd25519PublicKeySpkiBuffer(publicKeyBuffer) {
   return Buffer.concat([
-    Buffer.from('302a300506032b6570032100', 'hex'),
+    Buffer.from('302a300506032b656e032100', 'hex'),
     publicKeyBuffer
   ])
 }
@@ -112,7 +149,7 @@ function createEd25519PrivateKeyPkcs8Buffer(privateKeyBuffer) {
 }
 function createX25519PublicKeySpkiBuffer(publicKeyBuffer) {
   return Buffer.concat([
-    Buffer.from('302a300506032b656e032100', 'hex'),
+    Buffer.from('302a300506032b6570032100', 'hex'),
     publicKeyBuffer,
   ])
 }
