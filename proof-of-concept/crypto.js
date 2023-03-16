@@ -74,15 +74,14 @@ function ed25519PrivateJwkToPkcs8Buffer(jwk) {
   const privateKeyBuffer = Buffer.from(jwk.d, 'base64');
   return Buffer.concat([prefix, privateKeyBuffer]);
 }
-function privateKeyJwkToPublicKeyJwk(privateKeyJwk) {
-  const publicKeyJwk = {
+export function privateKeyJwkToPublicKeyJwk(privateKeyJwk) {
+  return {
     kty: privateKeyJwk.kty,
     crv: privateKeyJwk.crv,
-    x: privateKeyJwk.x,
+    x:   privateKeyJwk.x,
     alg: privateKeyJwk.alg,
     ext: privateKeyJwk.ext,
-  };
-  return publicKeyJwk;
+  }
 }
 
 

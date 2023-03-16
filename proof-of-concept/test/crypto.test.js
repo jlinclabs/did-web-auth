@@ -5,8 +5,7 @@ import {
   privateKeyToJKW,
   publicKeyFromJKW,
   privateKeyFromJKW,
-  keyBufferToString,
-  keyToBuffer,
+  privateKeyJwkToPublicKeyJwk,
   createJWS,
 } from '../crypto.js'
 
@@ -59,6 +58,15 @@ test('serialize keys', async t => {
     kp.privateKey,
     privateKeyFromJKW(privateKeyToJKW(kp.privateKey))
   )
+
+  t.alike(
+    kp.publicKey,
+    publicKeyFromJKW(
+      privateKeyJwkToPublicKeyJwk(
+        privateKeyToJKW(kp.privateKey)
+      )
+    )
+  )
 })
 
 test('JWS', async t => {
@@ -93,18 +101,3 @@ test('JWS', async t => {
 test('JWE', async t => {
 
 })
-// // test('JWK', async t => {
-// //   const kp1 = await generateSigningKeyPair('seed one')
-// //   t.alike(
-// //     publicKeyToJWK(kp1.publicKey),
-// //     {
-// //       crv: 'Ed25519',
-// //       x: 'ygNF8KvZrkf4r7-NSWdSNjLvZuhTj-G2TDYOVnDfr1s',
-// //       kty: 'OKP',
-// //     }
-// //   )
-// //   t.alike(
-// //     privateKeyToJWK(kp1.privateKey),
-// //     {}
-// //   )
-// // })
