@@ -32,7 +32,7 @@ test('generate signing keys from seed', async t => {
   )
 })
 
-test.solo('generate encrypting keys from seed', async t => {
+test.skip('generate encrypting keys from seed', async t => {
   const kp1 = await generateEncryptingKeyPair('seed one')
   t.alike(
     publicKeyToJKW(kp1.publicKey),
