@@ -33,145 +33,55 @@ export function keyToBuffer(string){
 
 export async function generateSigningKeyPair(seed){
   const generateKeyPair = promisify(crypto.generateKeyPair).bind(null, 'ed25519')
-  // export { generateKeyPair }
-
+  // WE NEED A DETERMINISTIC WAY TO MAKE THESE!?!?!
   const { publicKey, privateKey } = await generateKeyPair()
-  console.log({ publicKey, privateKey })
-  // TO BUFFER
-  console.log({
-    publicKey: publicKey.export(
-      {
-        type: 'spki',
-        format: 'der',
-      }
-    ),
-    privateKey: privateKey.export(
-      {
-        type: 'pkcs8',
-        format: 'der',
-      }
-    ),
-  })
-
-  // FROM BUFFER
-  console.log('reimported', {
-    publicKey: crypto.createPublicKey({
-      key: publicKey.export(
-        {
-          type: 'spki',
-          format: 'der',
-        }
-      ),
-      type: 'spki',
-      format: 'der',
-      // type: 'pkcs1',
-    }),
-
-    privateKey: crypto.createPrivateKey({
-      key: privateKey.export(
-        {
-          type: 'pkcs8',
-          format: 'der',
-        }
-      ),
-      type: 'pkcs8',
-      format: 'der',
-    })
-  })
-
-  // console.log({
-  //   type: {
-  //     publicKeyObject: publicKeyObject.type,
-  //     privateKeyObject: privateKeyObject.type,
-  //   },
-  // })
-
-
-
-
-
-
-
-
-  // const buffers = ed25519.MakeKeypair(
-  //   seed
-  //     ? crypto.createHash('sha256').update(seed).digest()
-  //     : crypto.randomBytes(32)
-  // )
-  // console.log({buffers})
-  // console.log('IMPORT WORK?', {
-  //   publicKey: crypto.createPublicKey({
-  //     key: buffers.publicKey,
-  //     type: 'spki',
-  //     format: 'der',
-  //     // type: 'pkcs1',
-  //   }),
-
-  //   privateKey: crypto.createPrivateKey({
-  //     key: buffers.privateKey,
-  //     type: 'pkcs8',
-  //     format: 'der',
-  //   })
-  // })
-
-  // // Convert the keys to Node.js crypto key pairs
-  // console.log({
-  //   publicKeyBuffer,
-  //   privateKeyBuffer,
-  // })
-  // crypto.createPublicKey({
-  //   key: publicKeyBuffer,
-  //   format: 'der',
-  //   type: 'spki'
-  //   // type: 'pkcs1',
-  // });
-  // crypto.createPrivateKey({
-  //   key: privateKeyBuffer,
-  //   format: 'der',
-  //   // type: 'pkcs1',
-  //   type: 'spki'
-  // });
-
-
-
-  const publicKeyJWK = publicKey.export({ format: 'jwk' })
-  const privateKeyJWK = privateKey.export({ format: 'jwk' })
-  console.log({ publicKeyJWK, privateKeyJWK })
-  return {
-    publicKey: publicKeyJWK,
-    privateKey: privateKeyJWK,
-  }
   return { publicKey, privateKey }
 }
 
-
-function publicKeyToBuffer(publicKey){
+export function publicKeyToBuffer(publicKey){
   return publicKey.export({
     type: 'spki',
     format: 'der',
   })
 }
 
-function privateKeyToBuffer(privateKey){
+export function privateKeyToBuffer(privateKey){
   return privateKey.export({
     type: 'pkcs8',
     format: 'der',
   })
 }
 
-function publicKeyFromBuffer(publicKeyBuffer){
+export function publicKeyFromBuffer(publicKeyBuffer){
   return crypto.createPublicKey({
     key: publicKeyBuffer,
     type: 'spki',
     format: 'der',
   })
 }
-function privateKeyFromBuffer(privateKeyBuffer){
+export function privateKeyFromBuffer(privateKeyBuffer){
   return crypto.createPrivateKey({
     key: privateKeyBuffer,
     type: 'pkcs8',
     format: 'der',
   })
+}
+
+export function publicKeyToJKW(publicKey){
+  return publicKey.export({ format: 'jwk' })
+}
+
+export function privateKeyToJKW(privateKey){
+  return privateKey.export({ format: 'jwk' })
+}
+
+
+export function publicKeyFromJKW(publicKeyJWK){
+  // return publicKey.export({ format: 'jwk' })
+}
+
+export function privateKeyFromJKW(privateKeyJWK){
+  // return privateKey.export({ format: 'jwk' })
 }
 
 async function publicKeyToKeyObject(publicKey){
