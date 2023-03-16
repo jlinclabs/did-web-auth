@@ -10,8 +10,36 @@ const DER_PREFIX_ED25519_PRIVATE = Buffer.from('302e020100300506032b657004220420
 const DER_PREFIX_X25519_PUBLIC   = Buffer.from('302a300506032b656e032100', 'hex')
 const DER_PREFIX_X25519_PRIVATE  = Buffer.from('302e020100300506032b656e042204', 'hex')
 
+const PublicKeyObject = crypto.generateKeyPairSync('ed25519').publicKey.constructor
+const PrivateKeyObject = crypto.generateKeyPairSync('ed25519').privateKey.constructor
+
 // publicKeyHex:  '302a300506032b65700321005da461af429b5a9f993f4e770d5cc48c08fb882dd82e76e7dcebf5e69daa4c94',
 // privateKeyHex: '302e020100300506032b65700422042088165832a9244f5688b8d1b6d92b0deca1c66c3c95168e1df4aa9ac95958541c'
+function isSamePublicKeyObject(a, b){
+  console.log({ a, b })
+  if (!(a instanceof PublicKeyObject)) throw new Error(`first argument is not an instance of PublicKeyObject`)
+  if (!(b instanceof PublicKeyObject)) throw new Error(`second argument is not an instance of PublicKeyObject`)
+  if (a === b) return true
+
+  a = a.export({ type: 'spki', format: 'der' })
+  b = b.export({ type: 'spki', format: 'der' })
+  console.log({ a, b })
+  return a.equals(b)
+  // if (
+  //   typeof a !== typeof b
+  // ) return false
+  // return false
+}
+function isSamePrivateKeyObject(a, b){
+  console.log({ a, b })
+  if (!(a instanceof PrivateKeyObject)) throw new Error(`first argument is not an instance of PrivateKeyObject`)
+  if (!(b instanceof PrivateKeyObject)) throw new Error(`second argument is not an instance of PrivateKeyObject`)
+  if (a === b) return true
+  a = a.export({ type: 'pkcs8', format: 'der' })
+  b = b.export({ type: 'pkcs8', format: 'der' })
+  return a.equals(b)
+}
+
 test.solo('crypto smoke', async t => {
   const signing = crypto.generateKeyPairSync('ed25519')
 
@@ -21,16 +49,25 @@ test.solo('crypto smoke', async t => {
   signing.privateJwk = await jose.exportJWK(signing.privateKey)
 
   // CONVERTING JWKs BACK TO SIGNING KEY OBJECTS
-  t.alike(signing.publicKey, await jose.importJWK(signing.publicJwk, 'EdDSA'))
-  t.alike(signing.privateKey, await jose.importJWK(signing.privateJwk, 'EdDSA'))
+  t.ok(isSamePublicKeyObject(signing.publicKey, await jose.importJWK(signing.publicJwk, 'EdDSA')))
+  t.ok(isSamePrivateKeyObject(signing.privateKey, await jose.importJWK(signing.privateJwk, 'EdDSA')))
 
   // CONVERTING SIGNING KEYS TO BUFFERS
   signing.publicKeyBuffer = signing.publicKey.export({ type: 'spki', format: 'der' })
   signing.privateKeyBuffer = signing.privateKey.export({ type: 'pkcs8', format: 'der' })
 
   // CONVERTING BUFFER BACK TO SIGNING KEY OBJECTS
-  t.alike(signing.publicKey, crypto.createPublicKey({ key: signing.publicKeyBuffer, type: 'spki', format: 'der' }))
-  t.alike(signing.privateKey, crypto.createPublicKey({ key: signing.privateKeyBuffer, type: 'pkcs8', format: 'der' }))
+  t.ok(isSamePublicKeyObject(signing.publicKey, crypto.createPublicKey({ key: signing.publicKeyBuffer, type: 'spki', format: 'der' })))
+  t.ok(isSamePrivateKeyObject(signing.privateKey, crypto.createPrivateKey({ key: signing.privateKeyBuffer, type: 'pkcs8', format: 'der' })))
+
+  // CONVERTING SIGNING KEYS TO Uint8Arrays
+  signing.publicKeyU8 = new Uint8Array(signing.publicKeyBuffer)
+  signing.privateKeyU8 = new Uint8Array(signing.privateKeyBuffer)
+
+  // CONVERTING Uint8Arrays BACK TO SIGNING KEY OBJECTS
+  t.ok(isSamePublicKeyObject(signing.publicKey, crypto.createPublicKey({ key: Buffer.from(signing.publicKeyU8, 'hex'), type: 'spki', format: 'der' })))
+  t.ok(isSamePrivateKeyObject(signing.privateKey, crypto.createPrivateKey({ key: Buffer.from(signing.privateKeyU8, 'hex'), type: 'pkcs8', format: 'der' })))
+
 
   // CONVERTING SIGNING KEYS TO HEX
   signing.publicKeyHex = signing.publicKeyBuffer.toString('hex')
