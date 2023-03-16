@@ -33,7 +33,6 @@ function isSamePrivateKeyObject(a, b){
 test.solo('crypto smoke', async t => {
   const signing = crypto.generateKeyPairSync('ed25519')
 
-
   // CONVERTING SIGNING KEYS TO JWKs
   signing.publicJwk = await jose.exportJWK(signing.publicKey)
   signing.privateJwk = await jose.exportJWK(signing.privateKey)
@@ -67,7 +66,7 @@ test.solo('crypto smoke', async t => {
   t.alike(signing.publicKey, crypto.createPublicKey({ key: Buffer.from(signing.publicKeyHex, 'hex'), type: 'spki', format: 'der' }))
   t.alike(signing.privateKey, crypto.createPrivateKey({ key: Buffer.from(signing.privateKeyHex, 'hex'), type: 'pkcs8', format: 'der' }))
 
-  console.log({ signing })
+  // console.log({ signing })
 
   // const signing2 = ed25519.generateKeyPair()
   // signing2.publicKeyU8 = signing2.publicKey
@@ -131,18 +130,23 @@ test.solo('crypto smoke', async t => {
 
   encrypting.publicJwk = {
     kty: 'OKP',
-    // crv: 'Ed25519',
     crv: 'X25519',
-    // x: base64url.encode(Buffer.from(encrypting.publicKeyHex, 'hex')).replace(/^u/, ''),
     x: base64url.encode(Buffer.from(encrypting.publicKeyU8)).replace(/^u/, ''),
+  }
+  encrypting.privateJwk = {
+    kty: 'OKP',
+    crv: 'X25519',
+    x: base64url.encode(Buffer.from(encrypting.publicKeyU8)).replace(/^u/, ''),
+    d: base64url.encode(Buffer.from(encrypting.privateKeyU8)).replace(/^u/, ''),
   }
   // console.log({ 'signing.publicJwk': signing.publicJwk })
   // console.log({ jwk })
   // console.log('DECODE signing.publicJwk.x', Buffer.from( base64url.decode('u'+signing.publicJwk.x)).toString('hex'))
   // console.log('DECODE jwk.x', Buffer.from( base64url.decode('u'+jwk.x)).toString('hex'))
   encrypting.publicKey = await jose.importJWK(encrypting.publicJwk, 'EdDSA')
-  console.log('IMPORTED JWK x25519', encrypting.publicKey)
-  console.log('IMPORTED JWK x25519 as HEX', encrypting.publicKey.export({ type: 'spki', format: 'der' }).toString('hex'))
+  encrypting.privateKey = await jose.importJWK(encrypting.privateJwk, 'EdDSA')
+  // console.log('IMPORTED JWK x25519', encrypting.publicKey)
+  // console.log('IMPORTED JWK x25519 as HEX', encrypting.publicKey.export({ type: 'spki', format: 'der' }).toString('hex'))
   // encrypting.privateJWK, await jose.importJWK({}, 'EdDSA')
   // encrypting.publicKey = crypto.createPublicKey({ key: Buffer.from(signing.publicKeyHex, 'hex'), type: 'spki', format: 'der' })
   // encrypting.privateKey = crypto.createPrivateKey({ key: Buffer.from(signing.privateKeyHex, 'hex'), type: 'pkcs8', format: 'der' })
@@ -151,10 +155,6 @@ test.solo('crypto smoke', async t => {
 
 
   console.log({ encrypting })
-  console.log({
-    'encrypting.publicKey.asymmetricKeyDetails': encrypting.publicKey.asymmetricKeyDetails,
-    'encrypting.publicKey.asymmetricKeyType': encrypting.publicKey.asymmetricKeyType,
-  })
 
   // encrypting.publicJwk = await jose.exportJWK(encrypting.publicKey)
   // encrypting.privateJwk = await jose.exportJWK(encrypting.privateKey)
@@ -169,11 +169,11 @@ test.solo('crypto smoke', async t => {
 
   // console.log({ encrypting })
 
-  const keyPair = crypto.generateKeyPairSync('x25519')
-  console.log('EXAMPLE JWKs for x25519 keypair', {
-    publicJwk: await jose.exportJWK(keyPair.publicKey),
-    privateJwk: await jose.exportJWK(keyPair.privateKey),
-  })
+  // const keyPair = crypto.generateKeyPairSync('x25519')
+  // console.log('EXAMPLE JWKs for x25519 keypair', {
+  //   publicJwk: await jose.exportJWK(keyPair.publicKey),
+  //   privateJwk: await jose.exportJWK(keyPair.privateKey),
+  // })
 
   // console.log({
   //   publicKey: keyPair.publicKey,
@@ -269,11 +269,6 @@ test.solo('crypto smoke', async t => {
     })
   }
 
-  console.log('KEY???',  {
-    publicKey: encrypting.publicKey,
-    asymmetricKeyType: encrypting.publicKey.asymmetricKeyType,
-  })
-
 
   // CREATE A JWE
   let jwe
@@ -293,8 +288,23 @@ test.solo('crypto smoke', async t => {
 
     jwe = await proto.encrypt()
   }
-  console.log(jwe)
+  console.log({jwe})
+
   // VALIDATE A JWE
+  {
+    const { plaintext, protectedHeader, additionalAuthenticatedData } =
+      await jose.generalDecrypt(jwe, encrypting.privateKey)
+    // t.alike(protectedHeader, {
+    //   alg: 'ECDH-ES',
+    //   enc: 'A256GCM',
+    //   epk: {
+    //     x: 'dFwHaD_HWJ1mFJMIxbY67Ny2OfkuybC7MQVAb_SScyI',
+    //     crv: 'X25519',
+    //     kty: 'OKP'
+    //   }
+    // })
+    t.alike(JSON.parse(new TextDecoder().decode(plaintext)), { friendship: 'is rare' })
+  }
 
 
 
