@@ -49,7 +49,7 @@ test('generate keys from seed', async t => {
   )
 })
 
-test.solo('serialize keys', async t => {
+test('serialize keys', async t => {
   const kp = await generateSigningKeyPair()
   t.alike(
     kp.publicKey,
@@ -86,8 +86,13 @@ test('JWS', async t => {
       }
     ],
   })
+
+  // TODO verify JWS
 })
 
+test('JWE', async t => {
+
+})
 // // test('JWK', async t => {
 // //   const kp1 = await generateSigningKeyPair('seed one')
 // //   t.alike(
