@@ -164,3 +164,23 @@ export async function verifyJWS({ jws, publicKey }){
   // console.log({ protectedHeader, data })
   return data
 }
+
+export async function createJWE({ payload, recipients }){
+  const text = new TextEncoder().encode(JSON.stringify(payload))
+  const proto = await new jose.GeneralEncrypt(text)
+  for (const publicKey of recipients){
+    proto
+      .addRecipient(publicKey)
+      .setProtectedHeader({ alg: 'EdDSA' })
+  }
+    // .setProtectedHeader({ enc: 'A256GCM' })
+    // .addRecipient(ecPublicKey)
+    // .setUnprotectedHeader({ alg: 'ECDH-ES+A256KW' })
+    // .addRecipient(rsaPublicKey)
+    // .setUnprotectedHeader({ alg: 'RSA-OAEP-384' })
+    // .encrypt()
+
+  const jwe = await proto.encrypt()
+  console.log({ jwe })
+  return jwe
+}

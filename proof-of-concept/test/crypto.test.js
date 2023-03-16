@@ -32,7 +32,7 @@ test('generate signing keys from seed', async t => {
   )
 })
 
-test.skip('generate encrypting keys from seed', async t => {
+test.solo('generate encrypting keys from seed', async t => {
   const kp1 = await generateEncryptingKeyPair('seed one')
   t.alike(
     publicKeyToJKW(kp1.publicKey),
@@ -116,6 +116,16 @@ test('JWS', async t => {
   })
 })
 
-test('JWE', async t => {
+test.skip('JWE', async t => {
+  const kp1 = await generateEncryptingKeyPair('JWE Test KP 1')
+  const kp2 = await generateEncryptingKeyPair('JWE Test KP 2')
+
+  const jwe = await createJWE({
+    payload: { stuff: true },
+    recipients: [
+      kp1.publicKey,
+      kp2.publicKey,
+    ]
+  })
 
 })
