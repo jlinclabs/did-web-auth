@@ -1,0 +1,64 @@
+<div class="mx-auto max-w-xl">
+  <div class="rounded overflow-hidden shadow-lg p-4 my-6 border border-slate-200">
+
+    <h1 class="mb-4 text-xl font-semibold text-center">
+      Login to {{app.host}}
+    </h1>
+    <h1 class="my-4">
+      <span class="font-semibold">{{app.host}}</span>
+      is requesting permission to create an
+      account in their system, using your
+      <span class="font-semibold">{{host}}</span>
+      account.
+    </h1>
+    <h1 class="my-4">
+      Would you like to login to
+      <span class="font-semibold">{{app.host}}</span>
+      with your
+      <span class="font-semibold">
+        {{usernameToEmail user.username}}
+      </span>
+      account?
+    </h1>
+    <div class="my-6">
+      <form action="/login/to" method="POST">
+        {{!-- TODO ensure no cross-domain posts with a CSRF variable --}}
+        {{!-- <input type="hidden" name="host" value="{{app.host}}"/> --}}
+        <input type="hidden" name="host" value="{{app.host}}"/>
+        <input type="hidden" name="returnTo" value="{{app.returnTo}}"/>
+
+        <div>
+          <input type="number" name="duration" value="1"/>
+          <select name="durationUnit" value="m">
+            <option value="h">Hours</option>
+            <option value="d">Days</option>
+            <option value="m">Months</option>
+            <option value="y">Years</option>
+          </select>
+        </div>
+
+        <div class="flex items-stretch justify-evenly">
+          <button
+            class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+            type="submit"
+            name="accept"
+            value="0"
+          >Reject</button>
+
+          <button
+            class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+            type="submit"
+            name="accept"
+            value="1"
+          >Accept</button>
+        </div>
+      </form>
+    </div>
+    <hr/>
+    <div class="mt-2 text-sm text-center">
+      Clicking Accept or Reject will take you back to {{app.returnTo}}
+    </div>
+
+
+  </div>
+</div>

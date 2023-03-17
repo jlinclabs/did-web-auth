@@ -59,7 +59,7 @@ const db = {
 
   async getUserById({
     id,
-    select = ['id', 'username', 'created_at', 'signing_jwk'],
+    select = ['id', 'username', 'created_at', 'signing_jwk', 'encrypting_jwk'],
   }){
     return await knex
       .select(select)
@@ -71,7 +71,7 @@ const db = {
 
   async getUserByUsername({
     username,
-    select = ['id', 'username', 'created_at', 'signing_jwk'],
+    select = ['id', 'username', 'created_at', 'signing_jwk', 'encrypting_jwk'],
   }){
     return await knex
       .select(select)

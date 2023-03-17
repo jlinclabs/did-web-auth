@@ -8,7 +8,11 @@ const PrivateKeyObject = crypto.generateKeyPairSync('ed25519').privateKey.constr
 
 export { PublicKeyObject, PrivateKeyObject }
 
-export async function generateSigningKeyPair(seed){
+export function createNonce(length = 16){
+  return base64url.encode(crypto.randomBytes(length))
+}
+
+export async function generateSigningKeyPair(){
   return crypto.generateKeyPairSync('ed25519')
 }
 
@@ -91,6 +95,26 @@ export async function verifyJWE(jwe, privateKey){
   const { plaintext, protectedHeader, additionalAuthenticatedData } = await jose.generalDecrypt(jwe, privateKey)
   // console.log({ protectedHeader, additionalAuthenticatedData })
   return JSON.parse(plaintext)
+}
+
+export async function createJWT({
+  payload, issuer, audience, signers
+}){
+  const proto = await new jose.EncryptJWT(payload)
+  proto.setProtectedHeader({ alg: 'dir', enc: 'A128CBC-HS256' })
+  proto.setIssuedAt()
+  proto.setIssuer(issuer)
+  proto.setAudience(audience)
+  proto.setSubject(subject)
+    // TODO this could be set as an option by the user
+  proto.setExpirationTime('2h')
+  // proto.setContentEncryptionKey(encryptionKey)
+  for (const privateKey of signers){
+    proto
+      .addSignature(privateKey)
+      .setProtectedHeader({ alg: 'EdDSA' })
+  }
+  proto.encrypt(secret)
 }
 
 export function publicKeyToBase58(publicKey){

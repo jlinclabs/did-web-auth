@@ -4,6 +4,7 @@ import Router from 'express-promise-router'
 
 import db from './db.js'
 import {
+  createNonce,
   publicKeyToBase58,
   keyPairToPublicJWK,
   createJWS,
@@ -55,42 +56,15 @@ routes.get('/.well-known/did.json', async (req, res, next) => {
       {
         "id": `${did}#signing-keys-1`,
         "type": "JsonWebKey2020",
-        "controller": "did:example:123",
+        "controller": req.app.did,
         "publicKeyJwk": await keyPairToPublicJWK(signingKeyPair),
-        // "publicKeyJwk": {
-        //   "kty": "EC", // external (property name)
-        //   "crv": "P-256", // external (property name)
-        //   "x": "Er6KSSnAjI70ObRWhlaMgqyIOQYrDJTE94ej5hybQ2M", // external (property name)
-        //   "y": "pPVzCOTJwgikPjuUE6UebfZySqEJ0ZtsWFpj7YSPGEk" // external (property name)
-        // }
       },
       {
         "id": `${did}#encrypting-keys-1`,
         "type": "JsonWebKey2020",
-        "controller": "did:example:123",
+        "controller": req.app.did,
         "publicKeyJwk": await keyPairToPublicJWK(encryptingKeyPair),
-        // "publicKeyJwk": {
-        //   "kty": "EC", // external (property name)
-        //   "crv": "P-256", // external (property name)
-        //   "x": "Er6KSSnAjI70ObRWhlaMgqyIOQYrDJTE94ej5hybQ2M", // external (property name)
-        //   "y": "pPVzCOTJwgikPjuUE6UebfZySqEJ0ZtsWFpj7YSPGEk" // external (property name)
-        // }
       }
-      // {
-      //   "id": `${did}#signing-keys-1`,
-      //   "type": "Ed25519VerificationKey2018",
-      //   // "controller": `${did}`,
-      //   "controller": `did:web:${host}`,
-      //   "publicKeyBase58": publicKeyToBase58(signingKeyPair.publicKey),
-      // },
-      // {
-
-      //   "id": `${did}#encrypting-keys-1`,
-      //   "type": "X25519KeyAgreementKey2019",
-      //   // "controller": `${did}`,
-      //   "controller": `did:web:${host}`,
-      //   "publicKeyBase58": publicKeyToBase58(encryptingKeyPair.publicKey),
-      // }
     ],
     "services": [
       // {} TODO set the did web service here
@@ -160,6 +134,9 @@ routes.post('/signin', async (req, res, next) => {
       ...locals
     })
   }
+  /**
+   * NORMAL LOGIN
+   */
   if (username && password){
     const user = await db.authenticateUser({username, password})
     if (user){ // success
@@ -180,15 +157,19 @@ routes.post('/signin', async (req, res, next) => {
       host: emailHost,
     })
     try{
-      const redirectUrl = await loginWithDIDWebAuth({
+      let redirectUrl = await loginWithDIDWebAuth({
         username: emailUsername,
         host: emailHost,
         appDID: req.app.did,
         appSigningKeyPair: req.app.signingKeyPair,
         appEncryptingKeyPair: req.app.encryptingKeyPair,
       })
+      redirectUrl = new URL(redirectUrl)
+      redirectUrl.searchParams.set('returnTo', `${req.app.origin}/welcome`)
+      console.log({ redirectUrl })
       return res.redirect(redirectUrl)
     }catch(error){
+      console.error(error)
       loginWithDIDWebAuthError = error
     }
     return renderSigninPage({
@@ -202,6 +183,11 @@ routes.post('/signin', async (req, res, next) => {
 
 })
 
+/**
+ *
+ *
+ *
+ */
 async function loginWithDIDWebAuth({
   username, host, appDID, appSigningKeyPair, appEncryptingKeyPair
 }){
@@ -241,6 +227,7 @@ async function loginWithDIDWebAuth({
       hostDID,
       userDID,
       now: Date.now(),
+      requestId: createNonce(),
     },
     signers: [
       appSigningKeyPair.privateKey
@@ -260,25 +247,12 @@ async function loginWithDIDWebAuth({
       jws,
     })
   })
-  const { did: destDID, jwe } = await response.json()
-  const destDIDDocument = await resolveDIDDocument(destDID)
-  console.log({ destDIDDocument })
-  // const senderEncryptionKeys = await getEncryptionKeysFromDIDDocument(destDIDDocument)
-  // console.log({ senderEncryptionKeys })
-  let data
-  // try{
-    console.log('decrypting with', await keyPairToPublicJWK(appEncryptingKeyPair))
-    data = await verifyJWE(jwe, appEncryptingKeyPair.privateKey)
-  // }
-  // catch(error){
-  //   console.error('verifyJWE error', error)
-  // }
-  // TODO try these keys
+  const { jwe } = await response.json()
+  // const destDIDDocument = await resolveDIDDocument(destDID) // TODO do we really need this step? dont we already know this stuff
+  // console.log({ destDIDDocument })
+  const data = await verifyJWE(jwe, appEncryptingKeyPair.privateKey)
   console.log({ data })
-  /* TODO
-   * create auth request object encrypted to the didDocument's keys
-   * send a JWE and get a JWT
-   */
+  if (data.redirectTo) return data.redirectTo
   throw new Error('NOT DONE YET')
 }
 
@@ -291,6 +265,11 @@ that app will hit this endpoint:
 routes.post('/auth/did', async (req, res, next) => {
   const { appDID, jws } = req.body
   console.log({ appDID, jws })
+
+  /**
+   * here is where apps can optionally white/black list
+   * other sites from login requests
+   */
 
   const { host } = praseDIDWeb(appDID)
   // get the did document of whoever sent this request
@@ -309,17 +288,23 @@ routes.post('/auth/did', async (req, res, next) => {
     }
   }
   console.log({ data })
-  const { did, now } = data
+  const { hostDID, userDID, now, requestId } = data
+
+
+  // TODO check that the useDID actually maps to a user in this app
 
   const senderEncryptionKeys = await getEncryptionKeysFromDIDDocument(appDIDDocument)
   console.log({ senderEncryptionKeys })
-  senderEncryptionKeys.forEach(async publicKey => {
-    console.log('encrypting with', await keyPairToPublicJWK({ publicKey }))
-  })
   // shouldnt we sign this?!!?!
+  const redirectTo = new URL(`${req.app.origin}/login/to/${host}`)
+  redirectTo.searchParams.set('userDID', userDID)
+
   const jwe = await createJWE({
     payload: {
-      redirectTo: `${req.app.origin}/login/to/${host}`
+      redirectTo,
+      hostDID,
+      userDID,
+      requestId,
     },
     recipients: senderEncryptionKeys,
   })
@@ -327,6 +312,61 @@ routes.post('/auth/did', async (req, res, next) => {
   res.json({ did: req.app.did, jwe })
 })
 
+/**
+ * login to another app page
+ *
+ * the user is redirected here to get permission to login
+ */
+routes.get('/login/to/:host', async (req, res, next) => {
+  const { host } = req.params
+  const { userDID } = req.query
+  const returnTo = req.query.returnTo || `https://${host}`
+  // if were not logged in, redirect or reder login form
+  // if we are logged in
+  //    if userDID does not match current user
+  //        show an error?
+  if (host.toLowerCase() === req.app.host.toLowerCase()){
+    res.status(400).render('pages/error', { message: 'bad request' })
+  }
+  const didDocument = await resolveDIDDocument(`did:web:${host}`)
+  res.render('pages/loginToAnotherApp', {
+    app: {
+      host,
+      didDocument,
+      returnTo,
+    }
+  })
+})
+
+routes.post('/login/to/', async (req, res, next) => {
+  let { host, accept, returnTo, userDID, duration, durationUnit } = req.body
+  const hostDID = `did:web:${host}`
+  const didDocument = await resolveDIDDocument(hostDID)
+  accept = accept === '1'
+  // if (!accept) return res.redirect
+
+  const jwt = await createJWT({
+    payload: {
+      appDID: hostDID,
+      hostDID: req.app.did,
+      userDID,
+      // 'urn:example:claim': true
+    },
+    issuer: req.app.did,
+    audience: hostDID,
+    subject: userDID,
+    expirationTime: `${duration}${durationUnit}`,
+    // encryptionKey:
+  })
+
+  // const jwe = await createJWE({
+  //   jwt
+
+  // })
+  returnTo = new URL(returnTo)
+  redirectUrl.searchParams.set('jwt', jwt)
+  res.redirect(returnTo)
+})
 
 /*
 signout callback
@@ -366,16 +406,19 @@ routes.get('/u/:username/did.json', async (req, res, next) => {
       "https://schema.org/"
     ],
     "id": did,
-    "publicKey": [
+    "verificationMethod": [
       {
-        "id": `${did}#keys-1`,
-        "type": "Ed25519VerificationKey2018",
-        // "type": `${user.public_key.crv}VerificationKey2018`,
-        // "controller": `${did}`,
-        "controller": `did:web:${host}`,
-        // "publicKeyBase58": "Gj7X9iYzY5zkh3qsiwMfzF8hSZ5f67Ft7RGxmvhDfdjC"
-        "publicKeyBase58": publicKeyToBase58(user.signing_jwk.publicKey),
-      }
+        "id": `${did}#signing-keys-1`,
+        "type": "JsonWebKey2020",
+        "controller": req.app.did,
+        "publicKeyJwk": await keyPairToPublicJWK(user.signing_jwk),
+      },
+      {
+        "id": `${did}#encrypting-keys-1`,
+        "type": "JsonWebKey2020",
+        "controller": req.app.did,
+        "publicKeyJwk": await keyPairToPublicJWK(user.encrypting_jwk),
+      },
     ],
     "authentication": [
       {

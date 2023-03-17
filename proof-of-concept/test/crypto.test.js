@@ -1,5 +1,6 @@
 import test from 'brittle'
 import {
+  createNonce,
   generateSigningKeyPair,
   generateEncryptingKeyPair,
   keyPairToPrivateJWK,
@@ -15,6 +16,13 @@ import {
 } from '../crypto.js'
 
 
+test('createNonce', async t => {
+  t.is(createNonce(12).length, 17)
+  t.is(createNonce(32).length, 44)
+  const n1 = createNonce()
+  t.is(typeof n1, 'string')
+  t.is(n1.includes(' '))
+})
 test('comparing signing keypairs', async t => {
   const skp1 = await generateSigningKeyPair()
   const skp2 = await generateSigningKeyPair()
