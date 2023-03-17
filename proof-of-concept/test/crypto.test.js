@@ -11,8 +11,13 @@ import {
   verifyJWS,
   createJWE,
   verifyJWE,
+  createEncryptedJWT,
+  decryptJWT,
   publicKeyToBase58,
   publicKeyFromBase58,
+  createDiffieHellman,
+  acceptDiffieHellman,
+  finalizeDiffieHellman,
 } from '../crypto.js'
 
 
@@ -76,6 +81,7 @@ test('serializing encrypting keypair', async t => {
   t.ok(isSamePrivateKeyObject(ekp1Copy.privateKey, ekp1.privateKey))
   t.ok(isSamePublicKeyObject(ekp1.publicKey, publicKeyFromBase58(publicKeyToBase58(ekp1.publicKey))))
 })
+
 test('JWEs', async t => {
   const ekp1 = await generateEncryptingKeyPair()
   const ekp2 = await generateEncryptingKeyPair()
@@ -92,6 +98,89 @@ test('JWEs', async t => {
 })
 
 
+test('Diffie Hellman', async t => {
+  /** AS ALICE **/
+  const {
+    actor: alice,
+    publicKey: alicePublicKey,
+    message: message1,
+  } = createDiffieHellman()
+  // Alice sends the message to Bob
+  const message1Copy = JSON.parse(JSON.stringify(message1))
+
+  /** AS BOB **/
+  const {
+    actor: bob,
+    publicKey: bobPublicKey,
+    secret: bobSecret,
+    message: message2,
+  } = await acceptDiffieHellman(message1Copy)
+  // Bob sends the message to back to Alice
+  const message2Copy = JSON.parse(JSON.stringify(message2))
+
+  /** AS ALICE **/
+  const aliceSecret = finalizeDiffieHellman(alice, message2Copy)
+  t.ok(aliceSecret.equals(bobSecret))
+})
+
+
+test.solo('apps exchanging JWTs', async t => {
+  const app1 = {
+    did: `did:web:app1.com`,
+    encryptingKeyPair: await generateEncryptingKeyPair(),
+    signingKeyPair: await generateSigningKeyPair(),
+  }
+  const app2 = {
+    did: `did:web:app2.com`,
+    encryptingKeyPair: await generateEncryptingKeyPair(),
+    signingKeyPair: await generateSigningKeyPair(),
+  }
+
+  app1.diffieHellman = createDiffieHellman()
+  const message1 = app1.diffieHellman.message
+  // app1 sends their initiating diffie hellman message to app2
+  app2.diffieHellman = acceptDiffieHellman(message1)
+  const message2 = app2.diffieHellman.message
+  // app2 sends their accepting diffie hellman message to back to app1
+  app1.diffieHellman.secret = finalizeDiffieHellman(app1.diffieHellman.actor, message2)
+  t.ok(app1.diffieHellman.secret.equals(app2.diffieHellman.secret))
+  // app1 and app2 now have the same secret
+  t.is(
+    app1.diffieHellman.secret.toString('base64url'),
+    app2.diffieHellman.secret.toString('base64url'),
+  )
+
+  // Alice constructs a JWT for BOB
+  const jwt = await createEncryptedJWT({
+    payload: {
+      something: 'important',
+      also: 'dont forget',
+    },
+    issuer: app1.did,
+    audience: app2.did,
+    subject: app2.did+':u:alicia',
+    expirationTime: `1h`,
+    secret: app1.diffieHellman.secret,
+  })
+  console.log({ jwt })
+
+  const jwtPayload = await decryptJWT(jwt, app2.diffieHellman.secret, {
+    issuer: app1.did,
+    audience: app2.did,
+  })
+  t.alike(
+    jwtPayload,
+    {
+      something: 'important',
+      also: 'dont forget',
+      iss: 'did:web:app1.com',
+      aud: 'did:web:app2.com',
+      sub: 'did:web:app2.com:u:alicia',
+      iat: jwtPayload.iat,
+      exp: jwtPayload.exp,
+    }
+  )
+})
 // test('generate signing keys from seed', async t => {
 //   // await generateSigningKeyPair()
 //   const skp1 = await generateSigningKeyPair('seed one')

@@ -1,7 +1,7 @@
 import crypto from 'crypto'
 import * as jose from 'jose'
 import { base58btc } from 'multiformats/bases/base58'
-import { base64url } from 'multiformats/bases/base64'
+import { base64url } from 'multiformats/bases/base64' // replace with jose.base64url
 
 const PublicKeyObject = crypto.generateKeyPairSync('ed25519').publicKey.constructor
 const PrivateKeyObject = crypto.generateKeyPairSync('ed25519').privateKey.constructor
@@ -97,24 +97,38 @@ export async function verifyJWE(jwe, privateKey){
   return JSON.parse(plaintext)
 }
 
-export async function createJWT({
-  payload, issuer, audience, signers
+/**
+ * Ok this is weird, we need to cut this secret down to 32 bits so we just take the first 32 bytes
+ */
+function truncateSecret(secret){
+  return secret.slice(0, 32)
+}
+
+export async function createEncryptedJWT({
+  payload, issuer, audience, subject, expirationTime = '1month', secret
 }){
-  const proto = await new jose.EncryptJWT(payload)
-  proto.setProtectedHeader({ alg: 'dir', enc: 'A128CBC-HS256' })
-  proto.setIssuedAt()
-  proto.setIssuer(issuer)
-  proto.setAudience(audience)
-  proto.setSubject(subject)
-    // TODO this could be set as an option by the user
-  proto.setExpirationTime('2h')
-  // proto.setContentEncryptionKey(encryptionKey)
-  for (const privateKey of signers){
-    proto
-      .addSignature(privateKey)
-      .setProtectedHeader({ alg: 'EdDSA' })
-  }
-  proto.encrypt(secret)
+  secret = truncateSecret(secret)
+
+  const jwt = await new jose.EncryptJWT(payload)
+    .setProtectedHeader({ alg: 'dir', enc: 'A128CBC-HS256' })
+    .setIssuedAt()
+    .setIssuer(issuer)
+    .setAudience(audience)
+    .setSubject(subject)
+    .setExpirationTime(expirationTime)
+    .encrypt(secret)
+
+  console.log({ jwt }, jwt.split('.'))
+  return jwt
+}
+
+export async function decryptJWT(jwt, secret, options){
+  console.log('verifyJWT', {jwt, secret, options})
+  secret = truncateSecret(secret)
+  // const x = await jose.generalDecrypt(jwt, secret)
+  const { payload, protectedHeader } = await jose.jwtDecrypt(jwt, secret, options)
+  console.log({ payload, protectedHeader })
+  return payload
 }
 
 export function publicKeyToBase58(publicKey){
@@ -124,3 +138,49 @@ export function publicKeyFromBase58(publicKey){
   return publicKeyFromBuffer(base58btc.decode(publicKey))
 }
 
+/**
+ * used to start a Diffie Hellman secret handshake
+ */
+export function createDiffieHellman(){
+  const actor = crypto.createDiffieHellman(512)
+  const publicKey = actor.generateKeys()
+  const prime = actor.getPrime()
+  const generator = actor.getGenerator()
+  return {
+    actor, publicKey, prime, generator,
+    message: {
+      publicKey: publicKey.toString('base64url'),
+      prime: prime.toString('base64url'),
+      generator: generator.toString('base64url'),
+    }
+  }
+}
+
+/**
+ * used to accept a Diffie Hellman secret handshake
+ */
+export function acceptDiffieHellman({ prime, generator, publicKey }){
+  prime = Buffer.from(prime, 'base64url')
+  generator = Buffer.from(generator, 'base64url')
+  publicKey = Buffer.from(publicKey, 'base64url')
+  const actor = crypto.createDiffieHellman(prime, generator)
+  const ourPublicKey = actor.generateKeys()
+  const secret = actor.computeSecret(publicKey)
+  return {
+    actor,
+    publicKey: ourPublicKey,
+    secret,
+    message: {
+      publicKey: ourPublicKey.toString('base64url'),
+    }
+  }
+  // acceptor.computeSecret(publicKey)
+}
+
+/**
+ * used by the initiator to finalize the secret
+ */
+export function finalizeDiffieHellman(actor, { publicKey }){
+  publicKey = Buffer.from(publicKey, 'base64url')
+  return actor.computeSecret(publicKey)
+}

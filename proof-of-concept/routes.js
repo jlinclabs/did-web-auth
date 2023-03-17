@@ -11,6 +11,8 @@ import {
   verifyJWS,
   createJWE,
   verifyJWE,
+  createJWT,
+  verifyJWT,
 } from './crypto.js'
 import {
   praseDIDWeb,
