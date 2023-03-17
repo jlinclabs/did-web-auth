@@ -4,7 +4,7 @@ import Router from 'express-promise-router'
 
 import db from './db.js'
 import { publicKeyToBase58, createJWS } from './crypto.js'
-import { resolveDIDDocument } from './dids.js'
+import { resolveDIDDocument, getSigningKeysFromDIDDocument } from './dids.js'
 // import { sessionStore } from './session.js'
 
 const routes = new Router
@@ -206,9 +206,6 @@ async function loginWithDidWebAuth({ username, host, appDid, appSigningKeyPair }
       headers: {
         'Content-Type': 'application/json',
       },
-      /**
-       * ?? how does this request get identified as being send by this host apps did??
-       */
       body: JSON.stringify({ did: appDid, jws }),
     })
   }
@@ -226,9 +223,11 @@ signout callback
 routes.post('/auth/did', async (req, res, next) => {
   const { did, jws } = req.body
   console.log({ did, jws })
+  // get the did document of whoever send this request
   const didDocument = await resolveDIDDocument(did)
-  // const publicKey =
   console.log({ didDocument })
+  // extract the signing keys from the did document
+  const senderSigningKeys = await getSigningKeysFromDIDDocument(didDocument)
   // verifyJWS(jws, )
 
   // const jwe = createJWE()

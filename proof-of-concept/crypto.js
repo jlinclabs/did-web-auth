@@ -87,4 +87,7 @@ export async function verifyJWE(jwe, privateKey){
 export async function publicKeyToBase58(publicKey){
   return base58btc.encode(publicKeyToBuffer(publicKey))
 }
+export async function publicKeyFromBase58(publicKey){
+  return publicKeyFromBuffer(base58btc.decode(publicKey))
+}
 
