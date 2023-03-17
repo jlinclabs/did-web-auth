@@ -27,13 +27,15 @@ export { PublicKeyObject, PrivateKeyObject }
 function signingPublicKeyToBuffer(publicKey){
   const buffer = publicKey.export({ type: 'spki', format: 'der' })
   let hex = buffer.toString('hex')
-  hex = hex.slice(DER_PREFIX_ED25519_PUBLIC.toString('hex').length, -1)
+  hex = hex.replace(DER_PREFIX_ED25519_PUBLIC.toString('hex'), '')
+  // hex = hex.slice(DER_PREFIX_ED25519_PUBLIC.toString('hex').length, -1)
   return Buffer.from(hex, 'hex')
 }
 function signingPrivateKeyToBuffer(privateKey){
   const buffer = privateKey.export({ type: 'pkcs8', format: 'der' })
   let hex = buffer.toString('hex')
-  hex = hex.slice(DER_PREFIX_ED25519_PRIVATE.toString('hex').length, -1)
+  hex = hex.replace(DER_PREFIX_ED25519_PRIVATE.toString('hex'), '')
+  // hex = hex.slice(DER_PREFIX_ED25519_PRIVATE.toString('hex').length, -1)
   return Buffer.from(hex, 'hex')
 }
 
@@ -41,6 +43,10 @@ export async function generateSigningKeyPair(seed){
   const normal = crypto.generateKeyPairSync('ed25519')
   normal.publicJwk = await jose.exportJWK(normal.publicKey)
   normal.privateJwk = await jose.exportJWK(normal.privateKey)
+  normal.publicBufferWithPrefixBuffer = normal.publicKey.export({ type: 'spki', format: 'der' })
+  normal.privateBufferWithPrefixBuffer = normal.privateKey.export({ type: 'pkcs8', format: 'der' })
+  normal.publicBufferWithPrefixHex = normal.publicBufferWithPrefixBuffer.toString('hex')
+  normal.privateBufferWithPrefixHex = normal.privateBufferWithPrefixBuffer.toString('hex')
   normal.publicBuffer = signingPublicKeyToBuffer(normal.publicKey)
   normal.privateBuffer = signingPrivateKeyToBuffer(normal.privateKey)
   normal.publicBufferAsHex = Buffer.from(normal.publicBuffer).toString('hex')
@@ -63,10 +69,12 @@ export async function generateSigningKeyPair(seed){
   normal.privateKeyFromJWK = crypto.createPrivateKey({ format: 'jwk', key: normal.privateJwk })
   normal.publicKeyFromJWK = crypto.createPublicKey({ format: 'jwk', key: normal.publicJwk })
   console.log({ normal })
-
-
-
+  normal.privateKeyFromJWKByHand = crypto.createPrivateKey({ format: 'jwk', key: normal.privateJwkByHand })
+  normal.publicKeyFromJWKByHand = crypto.createPublicKey({ format: 'jwk', key: normal.publicJwkByHand })
+  console.log({ normal })
   
+
+
   let {
     publicKey: publicKeyU8,
     secretKey: privateKeyU8
@@ -82,12 +90,6 @@ export async function generateSigningKeyPair(seed){
   console.log({ skp })
   // skp.publicBuffer = signingPublicKeyToBuffer(normal.publicKey)
   // skp.privateBuffer = signingPrivateKeyToBuffer(normal.privateKey)
-  console.log({
-    fromEd25519: {
-      publicKeyU8, 
-      privateKeyU8,
-    }
-  })
 
   // const publicJwk = await jose.exportJWK(publicKeyU8)
   // const privateJwk = await jose.exportJWK(privateKeyU8)
