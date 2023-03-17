@@ -27,9 +27,26 @@
         <input type="hidden" name="host" value="{{app.host}}"/>
         <input type="hidden" name="returnTo" value="{{app.returnTo}}"/>
 
-        <div>
-          <input type="number" name="duration" value="1"/>
-          <select name="durationUnit" value="m">
+
+
+        <div class="my-4">
+          <label class="text-gray-700 text-sm font-bold mb-2" for="expires-input">
+            Expires in:
+          </label>
+          <input
+            class="shadow appearance-none border rounded mr-2 py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+            style="max-width: 5rem;"
+            type="number" name="duration" value="1" id="expires-input"
+          />
+          <select
+            class="bg-transparent shadow border rounded mr-2 py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+            {{!-- class="peer rounded border border-blue-gray-200 bg-transparent px-3 py-2.5 font-sans text-sm
+            font-normal text-blue-gray-700 transition-all
+            placeholder-shown:border placeholder-shown:border-blue-gray-200 placeholder-shown:border-t-blue-gray-200
+            focus:border-2 focus:border-pink-500 focus:border-t-transparent
+            disabled:border-0 disabled:bg-blue-gray-50" --}}
+            name="durationUnit" value="m"
+          >
             <option value="h">Hours</option>
             <option value="d">Days</option>
             <option value="m">Months</option>

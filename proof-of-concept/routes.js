@@ -329,7 +329,7 @@ routes.get('/login/to/:host', async (req, res, next) => {
     res.status(400).render('pages/error', { message: 'bad request' })
   }
   const didDocument = await resolveDIDDocument(`did:web:${host}`)
-  res.render('pages/loginToAnotherApp', {
+  res.render('pages/signInToAnotherApp', {
     app: {
       host,
       didDocument,
@@ -394,7 +394,9 @@ routes.get('/u/:username/did.json', async (req, res, next) => {
   console.log({ username })
   const user = await db.getUserByUsername({username})
   console.log({ user })
-  if (!user) return res.status(404).json({})
+  if (!user) return res.status(404).json({
+    error: 'not found'
+  })
   const host = req.hostname
   const origin = `https://${host}`
   const did = `did:web:${host}:u:${username}`
