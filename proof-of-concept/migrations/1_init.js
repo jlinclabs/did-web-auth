@@ -3,6 +3,8 @@
  * @returns { Promise<void> }
  */
 export async function up(knex) {
+  // TODO await knex.schema.createTable('host_keys', function (table) {
+
   await knex.schema.createTable('sessions', function (table) {
     table.string('sid').primary()
     table.json('sess').notNullable()
@@ -15,9 +17,6 @@ export async function up(knex) {
     table.string('password_hash').notNullable()
     table.json('signing_jwk').notNullable()
     table.json('encrypting_jwk').notNullable()
-    // table.json('signing_private_key').notNullable()
-    // table.json('encrypting_public_key').notNullable()
-    // table.json('encrypting_private_key').notNullable()
   })
 }
 

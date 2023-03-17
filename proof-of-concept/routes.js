@@ -277,7 +277,7 @@ routes.get('/u/:username/did.json', async (req, res, next) => {
         // "controller": `${did}`,
         "controller": `did:web:${host}`,
         // "publicKeyBase58": "Gj7X9iYzY5zkh3qsiwMfzF8hSZ5f67Ft7RGxmvhDfdjC"
-        "publicKeyBase58": publicKeyToBase58(user.signing_public_key),
+        "publicKeyBase58": publicKeyToBase58(user.signing_jwk.publicKey),
       }
     ],
     "authentication": [

@@ -1,5 +1,7 @@
 import crypto from 'crypto'
 import * as jose from 'jose'
+import { base58btc } from 'multiformats/bases/base58'
+import { base64url } from 'multiformats/bases/base64'
 
 const PublicKeyObject = crypto.generateKeyPairSync('ed25519').publicKey.constructor
 const PrivateKeyObject = crypto.generateKeyPairSync('ed25519').privateKey.constructor
@@ -26,22 +28,24 @@ export async function keyPairFromJWK(privateJWK){
   }
 }
 
+export function publicKeyToBuffer(publicKey){
+  return publicKey.export({ type: 'spki', format: 'der' })
+}
+export function privateKeyToBuffer(privateKey){
+  return privateKey.export({ type: 'pkcs8', format: 'der' })
+}
+
 export function isSamePublicKeyObject(a, b){
   if (!(a instanceof PublicKeyObject)) throw new Error(`first argument is not an instance of PublicKeyObject`)
   if (!(b instanceof PublicKeyObject)) throw new Error(`second argument is not an instance of PublicKeyObject`)
   if (a === b) return true
-  a = a.export({ type: 'spki', format: 'der' })
-  b = b.export({ type: 'spki', format: 'der' })
-  return a.equals(b)
+  return publicKeyToBuffer(a).equals(publicKeyToBuffer(b))
 }
-
 export function isSamePrivateKeyObject(a, b){
   if (!(a instanceof PrivateKeyObject)) throw new Error(`first argument is not an instance of PrivateKeyObject`)
   if (!(b instanceof PrivateKeyObject)) throw new Error(`second argument is not an instance of PrivateKeyObject`)
   if (a === b) return true
-  a = a.export({ type: 'pkcs8', format: 'der' })
-  b = b.export({ type: 'pkcs8', format: 'der' })
-  return a.equals(b)
+  return privateKeyToBuffer(a).equals(privateKeyToBuffer(b))
 }
 
 export async function createJWS({ payload, signers }){
@@ -79,3 +83,8 @@ export async function verifyJWE(jwe, privateKey){
   // console.log({ protectedHeader, additionalAuthenticatedData })
   return JSON.parse(plaintext)
 }
+
+export async function publicKeyToBase58(publicKey){
+  return base58btc.encode(publicKeyToBuffer(publicKey))
+}
+

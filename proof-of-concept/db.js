@@ -1,7 +1,12 @@
 import Knex from 'knex'
 import bcrypt from 'bcrypt'
 
-import { generateSigningKeyPair, keyToJWK, JWKToKey } from './crypto.js'
+import {
+  generateSigningKeyPair,
+  generateEncryptingKeyPair,
+  keyPairToJWK,
+  keyPairFromJWK,
+} from './crypto.js'
 
 const knex = Knex({
   client: 'better-sqlite3',
@@ -25,17 +30,19 @@ const db = {
   },
   async createUser({ username, password }){
     const passwordHash = await bcrypt.hash(password, 10)
-    const { publicKey, privateKey } = await generateSigningKeyPair()
+    // const { publicKey, privateKey } = await generateSigningKeyPair()
+    const signingKeyPair = await generateSigningKeyPair()
+    const did = createDidWeb()
+    const signingJWK = await keyPairToJWK(signingKeyPair)
+    const encryptingJWK = await keyPairToJWK(await generateEncryptingKeyPair())
 
     const [user] = await knex
       .insert({
         created_at: new Date,
         username,
         password_hash: passwordHash,
-        // public_key: await keyToJWK(publicKey),
-        // private_key: await keyToJWK(privateKey),
-        signing_public_key: publicKey.toString('hex'),
-        signing_private_key: privateKey.toString('hex'),
+        signing_jwk: signingJWK,
+        encrypting_jwk: encryptingJWK,
       })
       .into('users')
       .returning('id')
@@ -50,7 +57,7 @@ const db = {
 
   async getUserById({
     id,
-    select = ['id', 'username', 'created_at', 'signing_public_key'],
+    select = ['id', 'username', 'created_at', 'signing_jwk'],
   }){
     return await knex
       .select(select)
@@ -62,7 +69,7 @@ const db = {
 
   async getUserByUsername({
     username,
-    select = ['id', 'username', 'created_at', 'signing_public_key'],
+    select = ['id', 'username', 'created_at', 'signing_jwk'],
   }){
     return await knex
       .select(select)
@@ -73,7 +80,10 @@ const db = {
   },
 
   async authenticateUser({username, password}){
-    const record = await this.getUserByUsername(username, ['id', 'password_hash'])
+    const record = await this.getUserByUsername({
+      username,
+      select: ['id', 'password_hash']
+    })
     if (!record) return
     const match = await bcrypt.compare(password, record.password_hash);
     if (match) return await this.getUserById({ id: record.id })
@@ -87,9 +97,15 @@ export default db
 async function userRecordToUser(record){
   if (!record) return
   const user = {...record}
-  for (const prop of [
-    'signing_public_key', 'signing_private_key',
-    'encrypting_public_key', 'encrypting_private_key',
-  ]) user[prop] &&= Buffer.from(user[prop], 'hex')
+  console.log({ user })
+  deserializeKeyPairs(user, 'signing_jwk')
+  deserializeKeyPairs(user, 'encrypting_jwk')
+  // if (user.signing_jwk) user.signing_jwk = await keyPairFromJWK(user.signing_jwk)
+  // if (user.encrypting_jwk) user.encrypting_jwk = await keyPairFromJWK(user.encrypting_jwk)
+  console.log({ user })
   return user
+}
+
+async function deserializeKeyPairs(user, prop){
+  user[prop] &&= await keyPairFromJWK(JSON.parse(user[prop]))
 }
