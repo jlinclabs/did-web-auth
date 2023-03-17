@@ -26,98 +26,175 @@ export { PublicKeyObject, PrivateKeyObject }
 
 function signingPublicKeyToBuffer(publicKey){
   const buffer = publicKey.export({ type: 'spki', format: 'der' })
-  let hex = buffer.toString('hex')
-  hex = hex.replace(DER_PREFIX_ED25519_PUBLIC.toString('hex'), '')
-  // hex = hex.slice(DER_PREFIX_ED25519_PUBLIC.toString('hex').length, -1)
+  const hex = buffer.toString('hex').replace(DER_PREFIX_ED25519_PUBLIC.toString('hex'), '')
   return Buffer.from(hex, 'hex')
 }
 function signingPrivateKeyToBuffer(privateKey){
   const buffer = privateKey.export({ type: 'pkcs8', format: 'der' })
-  let hex = buffer.toString('hex')
-  hex = hex.replace(DER_PREFIX_ED25519_PRIVATE.toString('hex'), '')
-  // hex = hex.slice(DER_PREFIX_ED25519_PRIVATE.toString('hex').length, -1)
+  const hex = buffer.toString('hex').replace(DER_PREFIX_ED25519_PRIVATE.toString('hex'), '')
   return Buffer.from(hex, 'hex')
 }
 
 export async function generateSigningKeyPair(seed){
-  const normal = crypto.generateKeyPairSync('ed25519')
-  normal.publicJwk = await jose.exportJWK(normal.publicKey)
-  normal.privateJwk = await jose.exportJWK(normal.privateKey)
-  normal.publicBufferWithPrefixBuffer = normal.publicKey.export({ type: 'spki', format: 'der' })
-  normal.privateBufferWithPrefixBuffer = normal.privateKey.export({ type: 'pkcs8', format: 'der' })
-  normal.publicBufferWithPrefixHex = normal.publicBufferWithPrefixBuffer.toString('hex')
-  normal.privateBufferWithPrefixHex = normal.privateBufferWithPrefixBuffer.toString('hex')
-  normal.publicBuffer = signingPublicKeyToBuffer(normal.publicKey)
-  normal.privateBuffer = signingPrivateKeyToBuffer(normal.privateKey)
-  normal.publicBufferAsHex = Buffer.from(normal.publicBuffer).toString('hex')
-  normal.privateBufferAsHex = Buffer.from(normal.privateBuffer).toString('hex')
-  normal.publicBufferAsBase64url = Buffer.from(normal.publicBuffer).toString('base64url')
-  normal.privateBufferAsBase64url = Buffer.from(normal.privateBuffer).toString('base64url')
-  normal.publicKeyU8 = new Uint8Array(normal.publicBuffer)
-  normal.privateKeyU8 = new Uint8Array(normal.privateBuffer)
-  normal.publicJwkByHand = {
-    kty: 'OKP',
-    crv: 'Ed25519',
-    x: Buffer.from(normal.publicKeyU8).toString('base64url'),
+  return crypto.generateKeyPairSync('ed25519')
+}
+
+export async function generateEncryptingKeyPair(){
+  return crypto.generateKeyPairSync('x25519')
+}
+
+export async function keyPairToJWK({ publicKey, privateKey }){
+  return await jose.exportJWK(privateKey)
+}
+export async function keyPairFromJWK(privateJWK){
+  const publicJWK = {...privateJWK}
+  delete publicJWK.d // TODO there is more to delete here
+  return {
+    publicKey: crypto.createPublicKey({ format: 'jwk', key: publicJWK }),
+    privateKey: crypto.createPrivateKey({ format: 'jwk', key: privateJWK }),
   }
-  normal.privateJwkByHand = {
-    kty: 'OKP',
-    crv: 'Ed25519',
-    x: Buffer.from(normal.publicKeyU8).toString('base64url'),
-    d: Buffer.from(normal.privateKeyU8).toString('base64url'),  
-  } 
-  normal.privateKeyFromJWK = crypto.createPrivateKey({ format: 'jwk', key: normal.privateJwk })
-  normal.publicKeyFromJWK = crypto.createPublicKey({ format: 'jwk', key: normal.publicJwk })
-  console.log({ normal })
-  normal.privateKeyFromJWKByHand = crypto.createPrivateKey({ format: 'jwk', key: normal.privateJwkByHand })
-  normal.publicKeyFromJWKByHand = crypto.createPublicKey({ format: 'jwk', key: normal.publicJwkByHand })
-  console.log({ normal })
+}
+
+
+export function isSamePublicKeyObject(a, b){
+  if (!(a instanceof PublicKeyObject)) throw new Error(`first argument is not an instance of PublicKeyObject`)
+  if (!(b instanceof PublicKeyObject)) throw new Error(`second argument is not an instance of PublicKeyObject`)
+  if (a === b) return true
+  a = a.export({ type: 'spki', format: 'der' })
+  b = b.export({ type: 'spki', format: 'der' })
+  return a.equals(b)
+}
+
+export function isSamePrivateKeyObject(a, b){
+  if (!(a instanceof PrivateKeyObject)) throw new Error(`first argument is not an instance of PrivateKeyObject`)
+  if (!(b instanceof PrivateKeyObject)) throw new Error(`second argument is not an instance of PrivateKeyObject`)
+  if (a === b) return true
+  a = a.export({ type: 'pkcs8', format: 'der' })
+  b = b.export({ type: 'pkcs8', format: 'der' })
+  return a.equals(b)
+}
+
+// export async function signingPublicKeyToJWK(publicKey){
+//   return await jose.exportJWK(publicKey)
+// }
+
+export async function createJWS({ payload, signers }){
+  const proto = new jose.GeneralSign(
+    new TextEncoder().encode(JSON.stringify(payload))
+  )
+  for (const privateKey of signers){
+    proto
+      .addSignature(privateKey)
+      .setProtectedHeader({ alg: 'EdDSA' })
+  }
+  return await proto.sign()
+}
+
+export async function verifyJWS(jws, publicKey){
+  const { payload, protectedHeader } = await jose.generalVerify(jws, publicKey)
+  // console.log({ protectedHeader })
+  return JSON.parse(payload)
+}
+
+export async function createJWE({ payload, recipients }){
+  const proto = new jose.GeneralEncrypt(
+    new TextEncoder().encode(JSON.stringify(payload))
+  )
+  for (const publicKey of recipients){
+    proto
+      .setProtectedHeader({ alg: 'ECDH-ES', enc: 'A256GCM' })
+      .addRecipient(publicKey)
+  }
+  return await proto.encrypt()
+}
+
+export async function verifyJWE(jwe, privateKey){
+  const { plaintext, protectedHeader, additionalAuthenticatedData } = await jose.generalDecrypt(jwe, privateKey)
+  // console.log({ protectedHeader, additionalAuthenticatedData })
+  return JSON.parse(plaintext)
+}
+
+function OLD(){
+  // const normal = crypto.generateKeyPairSync('ed25519')
+  // normal.publicJwk = await jose.exportJWK(normal.publicKey)
+  // normal.privateJwk = await jose.exportJWK(normal.privateKey)
+  // normal.publicBufferWithPrefixBuffer = normal.publicKey.export({ type: 'spki', format: 'der' })
+  // normal.privateBufferWithPrefixBuffer = normal.privateKey.export({ type: 'pkcs8', format: 'der' })
+  // normal.publicBufferWithPrefixHex = normal.publicBufferWithPrefixBuffer.toString('hex')
+  // normal.privateBufferWithPrefixHex = normal.privateBufferWithPrefixBuffer.toString('hex')
+  // normal.publicBuffer = signingPublicKeyToBuffer(normal.publicKey)
+  // normal.privateBuffer = signingPrivateKeyToBuffer(normal.privateKey)
+  // normal.publicBufferAsHex = Buffer.from(normal.publicBuffer).toString('hex')
+  // normal.privateBufferAsHex = Buffer.from(normal.privateBuffer).toString('hex')
+  // normal.publicBufferAsBase64url = Buffer.from(normal.publicBuffer).toString('base64url')
+  // normal.privateBufferAsBase64url = Buffer.from(normal.privateBuffer).toString('base64url')
+  // normal.publicKeyU8 = new Uint8Array(normal.publicBuffer)
+  // normal.privateKeyU8 = new Uint8Array(normal.privateBuffer)
+  // normal.publicJwkByHand = {
+  //   kty: 'OKP',
+  //   crv: 'Ed25519',
+  //   x: Buffer.from(normal.publicKeyU8).toString('base64url'),
+  // }
+  // normal.privateJwkByHand = {
+  //   kty: 'OKP',
+  //   crv: 'Ed25519',
+  //   x: Buffer.from(normal.publicKeyU8).toString('base64url'),
+  //   d: Buffer.from(normal.privateKeyU8).toString('base64url'),  
+  // } 
+  // normal.privateKeyFromJWK = crypto.createPrivateKey({ format: 'jwk', key: normal.privateJwk })
+  // normal.publicKeyFromJWK = crypto.createPublicKey({ format: 'jwk', key: normal.publicJwk })
+  // console.log({ normal })
+  // normal.privateKeyFromJWKByHand = crypto.createPrivateKey({ format: 'jwk', key: normal.privateJwkByHand })
+  // normal.publicKeyFromJWKByHand = crypto.createPublicKey({ format: 'jwk', key: normal.publicJwkByHand })
+  // console.log({ normal })
   
 
 
-  let {
-    publicKey: publicKeyU8,
-    secretKey: privateKeyU8
-  } = seed
-    ? ed25519.generateKeyPairFromSeed(seedToBuffer(seed))
-    : ed25519.generateKeyPair()
+  // let {
+  //   publicKey: publicKeyU8,
+  //   secretKey: privateKeyU8
+  // } = seed
+  //   ? ed25519.generateKeyPairFromSeed(seedToBuffer(seed))
+  //   : ed25519.generateKeyPair()
   
-  const skp = { publicKeyU8, privateKeyU8 }
-  skp.publicBuffer = Buffer.from(skp.publicKeyU8)
-  skp.privateBuffer = Buffer.from(privateKeyU8)
-  skp.publicHex = Buffer.from(skp.publicBuffer).toString('hex')
-  skp.privateHex = Buffer.from(skp.privateBuffer).toString('hex')
-  console.log({ skp })
-  // skp.publicBuffer = signingPublicKeyToBuffer(normal.publicKey)
-  // skp.privateBuffer = signingPrivateKeyToBuffer(normal.privateKey)
+  // const skp = { }
+  // skp.publicBuffer = Buffer.from(publicKeyU8)
+  // skp.privateBuffer = Buffer.from(privateKeyU8)
+  // skp.publicHex = Buffer.from(skp.publicBuffer).toString('hex')
+  // skp.privateHex = Buffer.from(skp.privateBuffer).toString('hex')
 
-  // const publicJwk = await jose.exportJWK(publicKeyU8)
-  // const privateJwk = await jose.exportJWK(privateKeyU8)
-  // publicJwk.kty = 'OKP'
-  // publicJwk.crv = 'Ed25519'
-  // privateJwk.kty = 'OKP'
-  // privateJwk.crv = 'Ed25519'
-  const privateJwk = {
-    kty: 'OKP',
-    crv: 'Ed25519',
-    x: Buffer.from(publicKeyU8).toString('base64url'),
-    d: Buffer.from(privateKeyU8).toString('base64url'),
+  // skp.publicBase64url = Buffer.from(skp.publicBuffer).toString('base64url')
+  // skp.privateBase64url = Buffer.from(skp.privateBuffer).toString('base64url')
+  // console.log({ skp })
+  // // skp.publicBuffer = signingPublicKeyToBuffer(normal.publicKey)
+  // // skp.privateBuffer = signingPrivateKeyToBuffer(normal.privateKey)
 
-    x: Buffer.from(publicKeyU8).toString('base64url'),
-    d: Buffer.from(privateKeyU8).toString('base64url'),
-  }
-  const publicJwk = {...privateJwk}
-  delete publicJwk.d
-  console.log({ publicJwk, privateJwk })
+  // // const publicJwk = await jose.exportJWK(publicKeyU8)
+  // // const privateJwk = await jose.exportJWK(privateKeyU8)
+  // // publicJwk.kty = 'OKP'
+  // // publicJwk.crv = 'Ed25519'
+  // // privateJwk.kty = 'OKP'
+  // // privateJwk.crv = 'Ed25519'
+  // const privateJwk = {
+  //   kty: 'OKP',
+  //   crv: 'Ed25519',
+  //   x: skp.publicBase64url,
+  //   d: skp.privateBase64url,
+  //   // x: Buffer.from(publicKeyU8).toString('base64url'),
+  //   // d: Buffer.from(privateKeyU8).toString('base64url'),
+  // }
+  // const publicJwk = {...privateJwk}
+  // delete publicJwk.d
+  // console.log({ publicJwk, privateJwk })
 
-  // const publicKey = await jose.importJWK(publicJwk, 'EdDSA')
-  // const privateKey = await jose.importJWK(privateJwk, 'EdDSA')
-  const privateKey = crypto.createPrivateKey({ format: 'jwk', key: privateJwk })
-  const publicKey = crypto.createPublicKey({ format: 'jwk', key: publicJwk })
+  // // const publicKey = await jose.importJWK(publicJwk, 'EdDSA')
+  // // const privateKey = await jose.importJWK(privateJwk, 'EdDSA')
+  // const privateKey = crypto.createPrivateKey({ format: 'jwk', key: privateJwk })
+  // const publicKey = crypto.createPublicKey({ format: 'jwk', key: publicJwk })
 
-  // const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519')
-  console.log({ publicKey, privateKey })
-  return { publicKey, privateKey }
+  // // const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519')
+  // console.log({ publicKey, privateKey })
+  // return { publicKey, privateKey }
 }
 
 
@@ -175,16 +252,16 @@ export async function generateSigningKeyPair(seed){
 // }
 
 
-function seedToBuffer(seed){
-  const hash = crypto.createHash('sha256').update(seed).digest(); //returns a buffer
-  console.log({ seed, hash })
-  return hash
-  // if (!seed) return
-  // const seedBuffer = Buffer.alloc(sodium.crypto_sign_SEEDBYTES)
-  // Buffer.from(seed).copy(seedBuffer)
-  // console.log({ seed, hash, seedBuffer })
-  // return seedBuffer
-}
+// function seedToBuffer(seed){
+//   const hash = crypto.createHash('sha256').update(seed).digest(); //returns a buffer
+//   console.log({ seed, hash })
+//   return hash
+//   // if (!seed) return
+//   // const seedBuffer = Buffer.alloc(sodium.crypto_sign_SEEDBYTES)
+//   // Buffer.from(seed).copy(seedBuffer)
+//   // console.log({ seed, hash, seedBuffer })
+//   // return seedBuffer
+// }
 
 
 // import { promisify } from 'util'

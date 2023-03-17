@@ -187,7 +187,7 @@ test.solo('crypto smoke', async t => {
   // VALIDATE A JWE
   {
     const { plaintext, protectedHeader, additionalAuthenticatedData } =
-      await jose.generalDecrypt(jwe, encrypting.privateKey)
+    await jose.generalDecrypt(jwe, encrypting.privateKey)
     // t.alike(protectedHeader, {
     //   alg: 'ECDH-ES',
     //   enc: 'A256GCM',

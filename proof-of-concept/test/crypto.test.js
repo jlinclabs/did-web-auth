@@ -1,8 +1,15 @@
 import test from 'brittle'
 import {
-  PublicKeyObject, 
-  PrivateKeyObject,
   generateSigningKeyPair,
+  generateEncryptingKeyPair,
+  keyPairToJWK,
+  keyPairFromJWK,
+  isSamePublicKeyObject,
+  isSamePrivateKeyObject,
+  createJWS,
+  verifyJWS,
+  createJWE,
+  verifyJWE,
   // generateEncryptingKeyPair,
   // generateEncryptingKeyPairFromSigningKeyPair,
   // publicKeyToJKW,
@@ -14,31 +21,98 @@ import {
   // verifyJWS,
 } from '../crypto.js'
 
-test('generate signing keys from seed', async t => {
-  await generateSigningKeyPair()
-  const skp1 = await generateSigningKeyPair('seed one')
-  console.log({ skp1 })
-  t.ok(skp1.publicKey instanceof PublicKeyObject)
-  t.ok(skp1.privateKey instanceof PrivateKeyObject)
 
-  // t.alike(
-  //   publicKeyToJKW(kp1.publicKey),
-  //   {
-  //     crv: 'Ed25519',
-  //     x: 'Odqt3JEB83JgwD1oGzv9lavRV0XxI4231BtzU5X1t4o',
-  //     kty: 'OKP',
-  //   }
-  // )
-  // t.alike(
-  //   privateKeyToJKW(kp1.privateKey),
-  //   {
-  //     crv: 'Ed25519',
-  //     d: 'c2VlZCBvbmUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
-  //     x: 'Odqt3JEB83JgwD1oGzv9lavRV0XxI4231BtzU5X1t4o',
-  //     kty: 'OKP',
-  //   }
-  // )
+test('comparing signing keypairs', async t => {
+  const skp1 = await generateSigningKeyPair()
+  const skp2 = await generateSigningKeyPair()
+  t.ok(isSamePublicKeyObject(skp1.publicKey, skp1.publicKey))
+  t.ok(isSamePrivateKeyObject(skp1.privateKey, skp1.privateKey))
+  t.ok(!isSamePublicKeyObject(skp1.publicKey, skp2.publicKey))
+  t.ok(!isSamePrivateKeyObject(skp1.privateKey, skp2.privateKey))
 })
+
+test('serializing signing keypair', async t => {
+  const skp1 = await generateSigningKeyPair()
+  const skp1JWK = await keyPairToJWK(skp1)
+  const skp1Copy = await keyPairFromJWK(JSON.parse(JSON.stringify(skp1JWK)))
+  t.ok(isSamePublicKeyObject(skp1.publicKey, skp1Copy.publicKey))
+  t.ok(isSamePrivateKeyObject(skp1Copy.privateKey, skp1.privateKey))
+})
+
+test('JWKs', async t => {
+
+})
+
+test('JWSs', async t => {
+  const skp1 = await generateSigningKeyPair()
+  const skp2 = await generateSigningKeyPair()
+  const jws = await createJWS({ 
+    payload: { panda: 18 }, 
+    signers: [skp1.privateKey] 
+  })
+  const payload = await verifyJWS(jws, skp1.publicKey)
+  t.alike(payload, { panda: 18 })
+})
+
+
+
+test('comparing encrypting keypairs', async t => {
+  const skp1 = await generateEncryptingKeyPair()
+  const skp2 = await generateEncryptingKeyPair()
+  t.ok(isSamePublicKeyObject(skp1.publicKey, skp1.publicKey))
+  t.ok(isSamePrivateKeyObject(skp1.privateKey, skp1.privateKey))
+  t.ok(!isSamePublicKeyObject(skp1.publicKey, skp2.publicKey))
+  t.ok(!isSamePrivateKeyObject(skp1.privateKey, skp2.privateKey))
+})
+
+test('serializing encrypting keypair', async t => {
+  const ekp1 = await generateEncryptingKeyPair()
+  const ekp1JWK = await keyPairToJWK(ekp1)
+  const ekp1Copy = await keyPairFromJWK(
+    JSON.parse(JSON.stringify(ekp1JWK))
+  )
+  t.ok(isSamePublicKeyObject(ekp1.publicKey, ekp1Copy.publicKey))
+  t.ok(isSamePrivateKeyObject(ekp1Copy.privateKey, ekp1.privateKey))
+})
+test('JWEs', async t => {
+  const ekp1 = await generateEncryptingKeyPair()
+  const ekp2 = await generateEncryptingKeyPair()
+
+  const jwe1 = await createJWE({
+    payload: { dont: 'tell', anyone: 'ok' },
+    recipients: [ekp2.publicKey],
+  })
+
+  t.alike(
+    await verifyJWE(jwe1, ekp2.privateKey),
+    { dont: 'tell', anyone: 'ok' }
+  )
+})
+// test('generate signing keys from seed', async t => {
+//   // await generateSigningKeyPair()
+//   const skp1 = await generateSigningKeyPair('seed one')
+//   console.log({ skp1 })
+//   t.ok(skp1.publicKey instanceof PublicKeyObject)
+//   t.ok(skp1.privateKey instanceof PrivateKeyObject)
+
+//   // t.alike(
+//   //   publicKeyToJKW(kp1.publicKey),
+//   //   {
+//   //     crv: 'Ed25519',
+//   //     x: 'Odqt3JEB83JgwD1oGzv9lavRV0XxI4231BtzU5X1t4o',
+//   //     kty: 'OKP',
+//   //   }
+//   // )
+//   // t.alike(
+//   //   privateKeyToJKW(kp1.privateKey),
+//   //   {
+//   //     crv: 'Ed25519',
+//   //     d: 'c2VlZCBvbmUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+//   //     x: 'Odqt3JEB83JgwD1oGzv9lavRV0XxI4231BtzU5X1t4o',
+//   //     kty: 'OKP',
+//   //   }
+//   // )
+// })
 
 // test('generate encrypting keys from seed', async t => {
 //   const skp1 = await generateSigningKeyPair('encryption test kp1')

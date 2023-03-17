@@ -26,20 +26,3 @@ export async function startAppInstance(t){
 }
 
 // TODO convert these to take `t` and use assertions
-export function isSamePublicKeyObject(a, b){
-  if (!(a instanceof PublicKeyObject)) throw new Error(`first argument is not an instance of PublicKeyObject`)
-  if (!(b instanceof PublicKeyObject)) throw new Error(`second argument is not an instance of PublicKeyObject`)
-  if (a === b) return true
-  a = a.export({ type: 'spki', format: 'der' })
-  b = b.export({ type: 'spki', format: 'der' })
-  return a.equals(b)
-}
-
-export function isSamePrivateKeyObject(a, b){
-  if (!(a instanceof PrivateKeyObject)) throw new Error(`first argument is not an instance of PrivateKeyObject`)
-  if (!(b instanceof PrivateKeyObject)) throw new Error(`second argument is not an instance of PrivateKeyObject`)
-  if (a === b) return true
-  a = a.export({ type: 'pkcs8', format: 'der' })
-  b = b.export({ type: 'pkcs8', format: 'der' })
-  return a.equals(b)
-}
