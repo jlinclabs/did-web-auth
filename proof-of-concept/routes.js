@@ -3,8 +3,20 @@ import { URL } from 'url'
 import Router from 'express-promise-router'
 
 import db from './db.js'
-import { publicKeyToBase58, createJWS, verifyJWS } from './crypto.js'
-import { resolveDIDDocument, getSigningKeysFromDIDDocument } from './dids.js'
+import {
+  publicKeyToBase58,
+  keyPairToPublicJWK,
+  createJWS,
+  verifyJWS,
+  createJWE,
+  verifyJWE,
+} from './crypto.js'
+import {
+  praseDIDWeb,
+  resolveDIDDocument,
+  getSigningKeysFromDIDDocument,
+  getEncryptionKeysFromDIDDocument,
+} from './dids.js'
 // import { sessionStore } from './session.js'
 
 const routes = new Router
@@ -30,7 +42,7 @@ homepage route
 */
 routes.get('/.well-known/did.json', async (req, res, next) => {
   // const hostPublicKey = db.getHostPublicKey()
-  const { signingKeyPair, host } = req.app
+  const { signingKeyPair, encryptionKeyPair, host } = req.app
   // console.log({ signingKeyPair, host })
   const did = `did:web:${host}`
   res.json({
@@ -41,13 +53,44 @@ routes.get('/.well-known/did.json', async (req, res, next) => {
     "id": `did:web:${req.hostname}`,
     "verificationMethod": [
       {
-        "id": `${did}#keys-1`,
-        "type": "Ed25519VerificationKey2018",
-        // "controller": `${did}`,
-        "controller": `did:web:${host}`,
-        // "publicKeyBase58": "Gj7X9iYzY5zkh3qsiwMfzF8hSZ5f67Ft7RGxmvhDfdjC"
-        "publicKeyBase58": publicKeyToBase58(signingKeyPair.publicKey),
+        "id": `${did}#signing-keys-1`,
+        "type": "JsonWebKey2020",
+        "controller": "did:example:123",
+        "publicKeyJwk": await keyPairToPublicJWK(signingKeyPair),
+        // "publicKeyJwk": {
+        //   "kty": "EC", // external (property name)
+        //   "crv": "P-256", // external (property name)
+        //   "x": "Er6KSSnAjI70ObRWhlaMgqyIOQYrDJTE94ej5hybQ2M", // external (property name)
+        //   "y": "pPVzCOTJwgikPjuUE6UebfZySqEJ0ZtsWFpj7YSPGEk" // external (property name)
+        // }
+      },
+      {
+        "id": `${did}#encrypting-keys-1`,
+        "type": "JsonWebKey2020",
+        "controller": "did:example:123",
+        "publicKeyJwk": await keyPairToPublicJWK(encryptionKeyPair),
+        // "publicKeyJwk": {
+        //   "kty": "EC", // external (property name)
+        //   "crv": "P-256", // external (property name)
+        //   "x": "Er6KSSnAjI70ObRWhlaMgqyIOQYrDJTE94ej5hybQ2M", // external (property name)
+        //   "y": "pPVzCOTJwgikPjuUE6UebfZySqEJ0ZtsWFpj7YSPGEk" // external (property name)
+        // }
       }
+      // {
+      //   "id": `${did}#signing-keys-1`,
+      //   "type": "Ed25519VerificationKey2018",
+      //   // "controller": `${did}`,
+      //   "controller": `did:web:${host}`,
+      //   "publicKeyBase58": publicKeyToBase58(signingKeyPair.publicKey),
+      // },
+      // {
+
+      //   "id": `${did}#encrypting-keys-1`,
+      //   "type": "X25519KeyAgreementKey2019",
+      //   // "controller": `${did}`,
+      //   "controller": `did:web:${host}`,
+      //   "publicKeyBase58": publicKeyToBase58(encryptionKeyPair.publicKey),
+      // }
     ],
     "services": [
       // {} TODO set the did web service here
@@ -206,7 +249,13 @@ async function loginWithDidWebAuth({ username, host, appDid, appSigningKeyPair }
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ did: appDid, jws }),
+    body: JSON.stringify({
+      '@context': [
+        '/tbd/app-login-request'
+      ],
+      appDid,
+      jws,
+    })
   })
   const data = await response.json()
   console.log({ response: data })
@@ -221,12 +270,12 @@ async function loginWithDidWebAuth({ username, host, appDid, appSigningKeyPair }
 signout callback
 */
 routes.post('/auth/did', async (req, res, next) => {
-  const { did, jws } = req.body
-  console.log({ did, jws })
+  const { appDid, jws } = req.body
+  console.log({ appDid, jws })
 
-  const { host } = praseDIDWeb(did)
+  const { host } = praseDIDWeb(appDid)
   // get the did document of whoever send this request
-  const didDocument = await resolveDIDDocument(did)
+  const didDocument = await resolveDIDDocument(appDid)
   console.log({ didDocument })
   // extract the signing keys from the did document
   const senderSigningKeys = await getSigningKeysFromDIDDocument(didDocument)
@@ -243,11 +292,12 @@ routes.post('/auth/did', async (req, res, next) => {
   console.log({ data })
   const { did, now } = data
 
-  // const jwe =
+  const senderEncryptionKeys = await getEncryptionKeysFromDIDDocument(didDocument)
   const jwe = createJWE({
     payload:{
-      redirectTo: `${req.app.origin}/login/to/${}`
-    }
+      redirectTo: `${req.app.origin}/login/to/${host}`
+    },
+    recipients: senderEncryptionKeys,
   })
   res.json({ did: req.app.did, jwe })
 })

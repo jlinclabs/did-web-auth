@@ -4,7 +4,7 @@ import * as KeyResolver from 'key-did-resolver'
 import * as WebResolver from 'web-did-resolver'
 import { Ed25519Provider } from 'key-did-provider-ed25519'
 import { DID } from 'dids'
-import { publicKeyFromBase58 } from './crypto.js'
+import { publicKeyFromBase58, publicKeyFromJWK } from './crypto.js'
 
 const resolver = new Resolver({
   ...KeyResolver.getResolver(),
@@ -42,13 +42,31 @@ export async function resolveDIDDocument(did){
 
 export async function getSigningKeysFromDIDDocument(didDocument){
   const signingPublicKeys = []
-  !(didDocument.verificationMethod || []).forEach(method => {
-    const { type, publicKeyBase58 } = method
-    if (!publicKeyBase58 || type !== 'Ed25519VerificationKey2018') return
-    signingPublicKeys.push(publicKeyFromBase58(publicKeyBase58))
-
-    // "type": "Ed25519VerificationKey2018",
-    // "publicKeyBase58": "4jYU6LsU6JfUj3sPy6ZYtnNMX8wG6Ngtxj6T1R6T9s9"
-  })
+  for (const method of (didDocument.verificationMethod || [])){
+    if (
+      method.type === 'JsonWebKey2020' &&
+      method.publicKeyJwk.crv === 'Ed25519'
+    ){
+      signingPublicKeys.push(publicKeyFromJWK(method.publicKeyJwk))
+    }
+    // const { type, publicKeyBase58 } = method
+    // if (!publicKeyBase58 || type !== 'Ed25519VerificationKey2018') return
+    // signingPublicKeys.push(publicKeyFromBase58(publicKeyBase58))
+  }
   return signingPublicKeys
+}
+export async function getEncryptionKeysFromDIDDocument(didDocument){
+  const encryptingPublicKeys = []
+  for (const method of (didDocument.verificationMethod || [])){
+    if (
+      method.type === 'JsonWebKey2020' &&
+      method.publicKeyJwk.crv === 'X25519'
+    ){
+      encryptingPublicKeys.push(publicKeyFromJWK(method.publicKeyJwk))
+    }
+    // const { type, publicKeyBase58 } = method
+    // if (publicKeyBase58  type !== 'Ed25519VerificationKey2018') return
+    // encryptingPublicKeys.push(publicKeyFromBase58(publicKeyBase58))
+  }
+  return encryptingPublicKeys
 }

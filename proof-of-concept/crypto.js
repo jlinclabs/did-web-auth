@@ -16,14 +16,20 @@ export async function generateEncryptingKeyPair(){
   return crypto.generateKeyPairSync('x25519')
 }
 
-export async function keyPairToJWK({ publicKey, privateKey }){
+export async function keyPairToPublicJWK({ publicKey, privateKey }){
   return await jose.exportJWK(privateKey)
+}
+export async function keyPairToPrivateJWK({ publicKey, privateKey }){
+  return await jose.exportJWK(privateKey)
+}
+export function publicKeyFromJWK(publicJWK){
+  return crypto.createPublicKey({ format: 'jwk', key: publicJWK })
 }
 export async function keyPairFromJWK(privateJWK){
   const publicJWK = {...privateJWK}
   delete publicJWK.d // TODO there is more to delete here
   return {
-    publicKey: crypto.createPublicKey({ format: 'jwk', key: publicJWK }),
+    publicKey: publicKeyFromJWK(publicJWK),
     privateKey: crypto.createPrivateKey({ format: 'jwk', key: privateJWK }),
   }
 }

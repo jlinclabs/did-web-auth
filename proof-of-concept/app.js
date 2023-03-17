@@ -3,7 +3,7 @@ import bodyParser from 'body-parser'
 import { create } from 'express-handlebars'
 import toColor from '@mapbox/to-color'
 
-import { generateSigningKeyPair } from './crypto.js'
+import { generateSigningKeyPair, generateEncryptingKeyPair } from './crypto.js'
 import { sessionRoutes } from './session.js'
 import routes from './routes.js'
 const app = express()
@@ -49,8 +49,9 @@ app.start = async function start(){
   app.locals.appColor = appColor
   app.host = host
   app.origin = `https://${host}`
-  // TODO persist this keypair in the DB
+  // TODO persist these keypair in the DB
   app.signingKeyPair = await generateSigningKeyPair()
+  app.encryptionKeyPair = await generateEncryptingKeyPair()
   app.did = `did:web:${host}`
   return new Promise((resolve, reject) => {
     app.server = app.listen(port, error => {

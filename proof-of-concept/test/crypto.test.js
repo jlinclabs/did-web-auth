@@ -2,7 +2,7 @@ import test from 'brittle'
 import {
   generateSigningKeyPair,
   generateEncryptingKeyPair,
-  keyPairToJWK,
+  keyPairToPrivateJWK,
   keyPairFromJWK,
   isSamePublicKeyObject,
   isSamePrivateKeyObject,
@@ -26,7 +26,7 @@ test('comparing signing keypairs', async t => {
 
 test('serializing signing keypair', async t => {
   const skp1 = await generateSigningKeyPair()
-  const skp1JWK = await keyPairToJWK(skp1)
+  const skp1JWK = await keyPairToPrivateJWK(skp1)
   const skp1Copy = await keyPairFromJWK(JSON.parse(JSON.stringify(skp1JWK)))
   t.ok(isSamePublicKeyObject(skp1.publicKey, skp1Copy.publicKey))
   t.ok(isSamePrivateKeyObject(skp1Copy.privateKey, skp1.privateKey))
@@ -60,7 +60,7 @@ test('comparing encrypting keypairs', async t => {
 
 test('serializing encrypting keypair', async t => {
   const ekp1 = await generateEncryptingKeyPair()
-  const ekp1JWK = await keyPairToJWK(ekp1)
+  const ekp1JWK = await keyPairToPrivateJWK(ekp1)
   const ekp1Copy = await keyPairFromJWK(
     JSON.parse(JSON.stringify(ekp1JWK))
   )

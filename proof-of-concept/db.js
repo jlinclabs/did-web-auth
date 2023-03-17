@@ -4,7 +4,7 @@ import bcrypt from 'bcrypt'
 import {
   generateSigningKeyPair,
   generateEncryptingKeyPair,
-  keyPairToJWK,
+  keyPairToPrivateJWK,
   keyPairFromJWK,
   publicKeyToBase58,
 } from './crypto.js'
@@ -34,8 +34,8 @@ const db = {
     // const { publicKey, privateKey } = await generateSigningKeyPair()
     const signingKeyPair = await generateSigningKeyPair()
     const publicKeyBase58 = publicKeyToBase58(signingKeyPair.publicKey)
-    const signingJWK = await keyPairToJWK(signingKeyPair)
-    const encryptingJWK = await keyPairToJWK(await generateEncryptingKeyPair())
+    const signingJWK = await keyPairToPrivateJWK(signingKeyPair)
+    const encryptingJWK = await keyPairToPrivateJWK(await generateEncryptingKeyPair())
 
     const [user] = await knex
       .insert({
