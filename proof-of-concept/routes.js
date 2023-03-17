@@ -10,7 +10,11 @@ const routes = new Router
 export default routes
 
 routes.use(async (req, res, next) => {
-  console.log({
+  console.log('📥', {
+    method: req.method,
+    url: req.url,
+    query: req.query,
+    params: req.params,
     user: req.user,
     session: req.session,
     userId: req.userId,
@@ -103,7 +107,6 @@ routes.post('/signin', async (req, res, next) => {
     // treat the email as a username since were the host
     if (emailHost.toLowerCase() === req.hostname.toLowerCase()){
       username = emailUsername
-      email = undefined
     }
   }
 
@@ -113,7 +116,6 @@ routes.post('/signin', async (req, res, next) => {
       ...locals
     })
   }
-
   if (username && password){
     const user = await db.authenticateUser({username, password})
     if (user){ // success
@@ -125,81 +127,89 @@ routes.post('/signin', async (req, res, next) => {
       })
     }
   }
+
   if (email){
     // you could lookup a user by this email at this point
-    const redirectUrl = await tryDidWebAuth({
+    let loginWithDidWebAuthError
+    console.log('attempting DID Web Auth', {
       username: emailUsername,
       host: emailHost,
-      appSigningKeyPair: req.app.signingKeyPair,
     })
-    if (redirectUrl) return res.redirect(redirectUrl)
-
+    try{
+      const redirectUrl = await loginWithDidWebAuth({
+        username: emailUsername,
+        host: emailHost,
+        appDid: req.app.did,
+        appSigningKeyPair: req.app.signingKeyPair,
+      })
+      return res.redirect(redirectUrl)
+    }catch(error){
+      loginWithDidWebAuthError = error
+    }
     return renderSigninPage({
-      error: `${emailHost} does not appear to support did-web-auth`,
+      error: (
+        `${emailHost} does not appear to support did-web-auth.` +
+        ( loginWithDidWebAuthError ? `\n${loginWithDidWebAuthError.message}` : '')
+      ),
     })
   }
 
 
 })
 
-async function tryDidWebAuth({ username, host, appSigningKeyPair }){
+async function loginWithDidWebAuth({ username, host, appDid, appSigningKeyPair }){
   const hostDid = `did:web:${host}`
   const did = `did:web:${host}:u:${username}`
   const hostDidDocumentUrl = new URL(`https://${host}/.well-knwown/did.json`)
   const didDocumentUrl = new URL(`https://${host}/u/${username}/did.json`)
-
-  const hostDidDocument = await fetchDidDocument(hostDidDocumentUrl)
-  if (!hostDidDocument) {
-    console.log(`failed to fetch host did document at ${hostDidDocumentUrl}`)
-    return
-  }
+  console.log({ hostDid, did, hostDidDocumentUrl, didDocumentUrl })
+  // const hostDidDocument = await fetchDidDocument(hostDidDocumentUrl)
+  // if (!hostDidDocument) {
+  //   console.log(`failed to fetch host did document at ${hostDidDocumentUrl}`)
+  //   return
+  // }
 
   const didDocument = await fetchDidDocument(didDocumentUrl)
   if (!didDocument) {
-    console.log(`failed to fetch signin did document at ${didDocumentUrl}`)
-    return
+    throw new Error(`failed to fetch signin did document at ${didDocumentUrl}`)
   }
 
-  console.log('trying to login with did document', didDocument)
-  if (didDocument.id !== did){
-    console.log(`invalid did document for signin at ${didDocumentUrl}. bad id`)
-    return
+  console.log({ didDocument })
+  if (didDocument.id !== did) {
+    throw new Error(`invalid did document for signin at ${didDocumentUrl}. bad id`)
   }
-  if (!Array.isArray(didDocument.service)){
-    console.log(`invalid did document for signin at ${didDocumentUrl}. no service listed`)
-    return
-  }
-
   // search the didDocument for an auth service endpoint
-  const didWebAuthServices = didDocument.service.filter(service =>
-    // service.id === '#did-web-auth' // TODO TDB this is more complex
-    service.type === "DidWebAuth"
-  )
-  console.log({ didWebAuthServices })
+  const didWebAuthServices = (didDocument.service || [])
+    .filter(service =>
+      // service.id === '#did-web-auth' // TODO TDB this is more complex
+      service.type === "DidWebAuth"
+    )
+
+  if (didWebAuthServices.length === 0){
+    throw new Error(`invalid did document for signin at ${didDocumentUrl}. no valid service listed`)
+  }
   for (const didWebAuthService of didWebAuthServices){
     const url = didWebAuthService.serviceEndpoint
-
-    const data = {
-      did,
-      now: Date.now(),
-    }
     const jws = await createJWS({
       payload: {
-
+        did,
+        now: Date.now(),
       },
       signers: [
         appSigningKeyPair.privateKey
       ]
     })
-
-    console.log(jws)
-
+    console.log({ jws })
     await fetch(url, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/jws',
+        'Content-Type': 'application/json',
+        'Referer':
       },
-      body: jws,
+      /**
+       * ?? how does this request get identified as being send by this host apps did??
+       */
+      body: JSON.stringify({ did: appDid, jws }),
     })
   }
 
@@ -207,33 +217,29 @@ async function tryDidWebAuth({ username, host, appSigningKeyPair }){
    * create auth request object encrypted to the didDocument's keys
    * send a JWE and get a JWT
    */
-
+  throw new Error('NOT DONE YET')
 }
 
-async function fetchJSON(url, options = {}){
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-      ...options.headers
-    },
-    body: options.body
-      ? JSON.stringify(options.body)
-      : undefined,
-  })
-  return await response.json()
-}
+/*
+signout callback
+*/
+routes.post('/auth/did', async (req, res, next) => {
+  const { did, jws } = req.body
+  console.log({ did, jws })
+  const didDocument = await resolveDIDDocument(did)
+  // const publicKey =
+  // verifyJWS(jws, )
+  console.log({jws})
 
-async function fetchDidDocument(url){
-  try{
-    return await fetchJSON(url)
-  }catch(error){
-    console.log(`failed to fetch DID Document from ${url}`)
-    console.error(error)
-  }
-}
+  // const jwe = createJWE()
+  const jwe = {}
+  res.json(jwe)
+})
 
+
+/*
+signout callback
+*/
 routes.post('/signout', async (req, res, next) => {
   await req.logout()
   res.render('redirect', { to: '/' })
@@ -343,3 +349,33 @@ routes.get('/debug', async (req, res, next) => {
     }
   })
 })
+
+
+
+// -- helpers
+
+
+async function fetchJSON(url, options = {}){
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      ...options.headers
+    },
+    body: options.body
+      ? JSON.stringify(options.body)
+      : undefined,
+  })
+  return await response.json()
+}
+
+async function fetchDidDocument(url){
+  try{
+    return await fetchJSON(url)
+  }catch(error){
+    console.log(`failed to fetch DID Document from ${url}`)
+    console.error(error)
+  }
+}
+

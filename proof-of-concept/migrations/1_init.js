@@ -15,6 +15,7 @@ export async function up(knex) {
     table.timestamp('created_at').notNullable()
     table.string('username').notNullable().unique()
     table.string('password_hash').notNullable()
+    table.string('public_key').notNullable() // base58
     table.json('signing_jwk').notNullable()
     table.json('encrypting_jwk').notNullable()
   })

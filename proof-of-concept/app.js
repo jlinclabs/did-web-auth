@@ -48,7 +48,9 @@ app.start = async function start(){
   app.locals.port = port
   app.locals.appColor = appColor
   app.host = host
-  app.signingKeyPair = await generateSigningKeyPair(`${host} has some secrets`)
+  // TODO persist this keypair in the DB
+  app.signingKeyPair = await generateSigningKeyPair()
+  app.did = `did:web:${host}`
   return new Promise((resolve, reject) => {
     app.server = app.listen(port, error => {
       if (error) reject(error)

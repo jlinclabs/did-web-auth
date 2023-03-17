@@ -6,6 +6,7 @@ import {
   generateEncryptingKeyPair,
   keyPairToJWK,
   keyPairFromJWK,
+  publicKeyToBase58,
 } from './crypto.js'
 
 const knex = Knex({
@@ -32,7 +33,7 @@ const db = {
     const passwordHash = await bcrypt.hash(password, 10)
     // const { publicKey, privateKey } = await generateSigningKeyPair()
     const signingKeyPair = await generateSigningKeyPair()
-    const did = createDidWeb()
+    const publicKeyBase58 = publicKeyToBase58(signingKeyPair.publicKey)
     const signingJWK = await keyPairToJWK(signingKeyPair)
     const encryptingJWK = await keyPairToJWK(await generateEncryptingKeyPair())
 
@@ -41,6 +42,7 @@ const db = {
         created_at: new Date,
         username,
         password_hash: passwordHash,
+        public_key: publicKeyBase58,
         signing_jwk: signingJWK,
         encrypting_jwk: encryptingJWK,
       })
