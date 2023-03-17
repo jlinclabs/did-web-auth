@@ -48,6 +48,7 @@ app.start = async function start(){
   app.locals.port = port
   app.locals.appColor = appColor
   app.host = host
+  app.origin = `https://${host}`
   // TODO persist this keypair in the DB
   app.signingKeyPair = await generateSigningKeyPair()
   app.did = `did:web:${host}`

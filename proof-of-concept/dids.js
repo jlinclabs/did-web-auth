@@ -11,6 +11,13 @@ const resolver = new Resolver({
   ...WebResolver.getResolver(),
 })
 
+export function praseDIDWeb(did){
+  const matches = did.match(/^did:web:([^:]+)(?::(.*)|$)/)
+  if (matches) return {
+    host: matches[1],
+    path: matches[2],
+  }
+}
 export async function resolveDIDDocument(did){
   console.log('[resolve did]', { did })
   const {
@@ -30,12 +37,12 @@ export async function resolveDIDDocument(did){
       `${didResolutionMetadata?.message}`
     )
   }
-  return
+  return didDocument
 }
 
 export async function getSigningKeysFromDIDDocument(didDocument){
   const signingPublicKeys = []
-  (didDocument.verificationMethod || []).forEach(method => {
+  !(didDocument.verificationMethod || []).forEach(method => {
     const { type, publicKeyBase58 } = method
     if (!publicKeyBase58 || type !== 'Ed25519VerificationKey2018') return
     signingPublicKeys.push(publicKeyFromBase58(publicKeyBase58))

@@ -3,7 +3,7 @@ import { URL } from 'url'
 import Router from 'express-promise-router'
 
 import db from './db.js'
-import { publicKeyToBase58, createJWS } from './crypto.js'
+import { publicKeyToBase58, createJWS, verifyJWS } from './crypto.js'
 import { resolveDIDDocument, getSigningKeysFromDIDDocument } from './dids.js'
 // import { sessionStore } from './session.js'
 
@@ -189,27 +189,27 @@ async function loginWithDidWebAuth({ username, host, appDid, appSigningKeyPair }
   if (didWebAuthServices.length === 0){
     throw new Error(`invalid did document for signin at ${didDocumentUrl}. no valid service listed`)
   }
-  for (const didWebAuthService of didWebAuthServices){
-    const url = didWebAuthService.serviceEndpoint
-    const jws = await createJWS({
-      payload: {
-        did,
-        now: Date.now(),
-      },
-      signers: [
-        appSigningKeyPair.privateKey
-      ]
-    })
-    console.log({ jws })
-    await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ did: appDid, jws }),
-    })
-  }
-
+  const didWebAuthService = didWebAuthServices[0] // for now just try the first matching endpoint
+  const url = didWebAuthService.serviceEndpoint
+  const jws = await createJWS({
+    payload: {
+      did,
+      now: Date.now(),
+    },
+    signers: [
+      appSigningKeyPair.privateKey
+    ]
+  })
+  console.log({ jws })
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ did: appDid, jws }),
+  })
+  const data = await response.json()
+  console.log({ response: data })
   /* TODO
    * create auth request object encrypted to the didDocument's keys
    * send a JWE and get a JWT
@@ -223,16 +223,33 @@ signout callback
 routes.post('/auth/did', async (req, res, next) => {
   const { did, jws } = req.body
   console.log({ did, jws })
+
+  const { host } = praseDIDWeb(did)
   // get the did document of whoever send this request
   const didDocument = await resolveDIDDocument(did)
   console.log({ didDocument })
   // extract the signing keys from the did document
   const senderSigningKeys = await getSigningKeysFromDIDDocument(didDocument)
-  // verifyJWS(jws, )
+  console.log({ senderSigningKeys })
+  let data
+  for (const senderSigningKey of senderSigningKeys){
+    try{
+      data = await verifyJWS(jws, senderSigningKey)
+      break
+    }catch(error){
+      console.error('verifyJWS error'. error)
+    }
+  }
+  console.log({ data })
+  const { did, now } = data
 
-  // const jwe = createJWE()
-  const jwe = {}
-  res.json(jwe)
+  // const jwe =
+  const jwe = createJWE({
+    payload:{
+      redirectTo: `${req.app.origin}/login/to/${}`
+    }
+  })
+  res.json({ did: req.app.did, jwe })
 })
 
 
