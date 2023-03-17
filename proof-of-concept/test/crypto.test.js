@@ -10,15 +10,8 @@ import {
   verifyJWS,
   createJWE,
   verifyJWE,
-  // generateEncryptingKeyPair,
-  // generateEncryptingKeyPairFromSigningKeyPair,
-  // publicKeyToJKW,
-  // privateKeyToJKW,
-  // publicKeyFromJKW,
-  // privateKeyFromJKW,
-  // privateKeyJwkToPublicKeyJwk,
-  // createJWS,
-  // verifyJWS,
+  publicKeyToBase58,
+  publicKeyFromBase58,
 } from '../crypto.js'
 
 
@@ -37,6 +30,7 @@ test('serializing signing keypair', async t => {
   const skp1Copy = await keyPairFromJWK(JSON.parse(JSON.stringify(skp1JWK)))
   t.ok(isSamePublicKeyObject(skp1.publicKey, skp1Copy.publicKey))
   t.ok(isSamePrivateKeyObject(skp1Copy.privateKey, skp1.privateKey))
+  t.ok(isSamePublicKeyObject(skp1.publicKey, publicKeyFromBase58(publicKeyToBase58(skp1.publicKey))))
 })
 
 test('JWKs', async t => {
@@ -46,14 +40,13 @@ test('JWKs', async t => {
 test('JWSs', async t => {
   const skp1 = await generateSigningKeyPair()
   const skp2 = await generateSigningKeyPair()
-  const jws = await createJWS({ 
-    payload: { panda: 18 }, 
-    signers: [skp1.privateKey] 
+  const jws = await createJWS({
+    payload: { panda: 18 },
+    signers: [skp1.privateKey]
   })
   const payload = await verifyJWS(jws, skp1.publicKey)
   t.alike(payload, { panda: 18 })
 })
-
 
 
 test('comparing encrypting keypairs', async t => {
@@ -73,6 +66,7 @@ test('serializing encrypting keypair', async t => {
   )
   t.ok(isSamePublicKeyObject(ekp1.publicKey, ekp1Copy.publicKey))
   t.ok(isSamePrivateKeyObject(ekp1Copy.privateKey, ekp1.privateKey))
+  t.ok(isSamePublicKeyObject(ekp1.publicKey, publicKeyFromBase58(publicKeyToBase58(ekp1.publicKey))))
 })
 test('JWEs', async t => {
   const ekp1 = await generateEncryptingKeyPair()
@@ -88,6 +82,8 @@ test('JWEs', async t => {
     { dont: 'tell', anyone: 'ok' }
   )
 })
+
+
 // test('generate signing keys from seed', async t => {
 //   // await generateSigningKeyPair()
 //   const skp1 = await generateSigningKeyPair('seed one')

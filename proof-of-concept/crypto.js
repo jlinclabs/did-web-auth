@@ -31,6 +31,9 @@ export async function keyPairFromJWK(privateJWK){
 export function publicKeyToBuffer(publicKey){
   return publicKey.export({ type: 'spki', format: 'der' })
 }
+export function publicKeyFromBuffer(publicKey){
+  return crypto.createPublicKey({ key: publicKey, type: 'spki', format: 'der' })
+}
 export function privateKeyToBuffer(privateKey){
   return privateKey.export({ type: 'pkcs8', format: 'der' })
 }
@@ -84,10 +87,10 @@ export async function verifyJWE(jwe, privateKey){
   return JSON.parse(plaintext)
 }
 
-export async function publicKeyToBase58(publicKey){
+export function publicKeyToBase58(publicKey){
   return base58btc.encode(publicKeyToBuffer(publicKey))
 }
-export async function publicKeyFromBase58(publicKey){
+export function publicKeyFromBase58(publicKey){
   return publicKeyFromBuffer(base58btc.decode(publicKey))
 }
 
