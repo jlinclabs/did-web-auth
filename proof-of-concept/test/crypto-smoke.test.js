@@ -136,6 +136,34 @@ test.solo('crypto smoke', async t => {
     })
   }
 
+  // CREATE A JWS WITH A COPPIED PrivateKeyObject
+  {
+    function signingPrivateKeyJWK(publicKey){
+      return publicKey.export({ type: 'pkcs8', format: 'jwk' })
+    }
+    function signingPublicKeyJWK(publicKey){
+      return publicKey.export({ type: 'spki', format: 'jwk' })
+    }
+    function signingPrivateKeyJWKToKeyObject(privateKeyJWK){
+      return crypto.createPrivateKey({ format: 'jwk', key: privateKeyJWK })
+    }
+    function signingPublicKeyJWKToKeyObject(publicKeyJWK){
+      return crypto.createPublicKey({ format: 'jwk', key: publicKeyJWK })
+    }
+    const privateKey = signingPrivateKeyJWKToKeyObject(
+      signingPrivateKeyJWK(signing.privateKey)
+    )
+    const publicKey = signingPublicKeyJWKToKeyObject(
+      signingPublicKeyJWK(signing.publicKey)
+    )
+    const jwsProto = new jose.GeneralSign(
+      new TextEncoder().encode(JSON.stringify({ whatever: 12 }))
+    )
+    jwsProto.addSignature(privateKey).setProtectedHeader({ alg: 'EdDSA' })
+    const jws = await jwsProto.sign()
+    const { payload, protectedHeader } = await jose.generalVerify(jws, publicKey)
+    t.alike(JSON.parse(payload), { whatever: 12 })
+  }
 
   // CREATE A JWE
   let jwe
@@ -172,5 +200,5 @@ test.solo('crypto smoke', async t => {
     t.alike(JSON.parse(new TextDecoder().decode(plaintext)), { friendship: 'is rare' })
   }
 
-  console.log({ signing, encrypting })
+  // console.log({ signing, encrypting })
 })
