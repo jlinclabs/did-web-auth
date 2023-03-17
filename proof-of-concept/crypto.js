@@ -43,11 +43,8 @@ export async function generateSigningKeyPair(seed){
   normal.privateJwk = await jose.exportJWK(normal.privateKey)
   normal.publicBuffer = signingPublicKeyToBuffer(normal.publicKey)
   normal.privateBuffer = signingPrivateKeyToBuffer(normal.privateKey)
-  console.log({ normal })
-  // normal.publicBuffer = normal.publicKey.export({ type: 'spki', format: 'der' })
-  // normal.privateBuffer = normal.privateKey.export({ type: 'pkcs8', format: 'der' })
-  // normal.publicBufferAsHex = Buffer.from(normal.publicBuffer).toString('hex')
-  // normal.privateBufferAsHex = Buffer.from(normal.privateBuffer).toString('hex')
+  normal.publicBufferAsHex = Buffer.from(normal.publicBuffer).toString('hex')
+  normal.privateBufferAsHex = Buffer.from(normal.privateBuffer).toString('hex')
   normal.publicBufferAsBase64url = Buffer.from(normal.publicBuffer).toString('base64url')
   normal.privateBufferAsBase64url = Buffer.from(normal.privateBuffer).toString('base64url')
   normal.publicKeyU8 = new Uint8Array(normal.publicBuffer)
@@ -66,12 +63,25 @@ export async function generateSigningKeyPair(seed){
   normal.privateKeyFromJWK = crypto.createPrivateKey({ format: 'jwk', key: normal.privateJwk })
   normal.publicKeyFromJWK = crypto.createPublicKey({ format: 'jwk', key: normal.publicJwk })
   console.log({ normal })
+
+
+
+  
   let {
     publicKey: publicKeyU8,
     secretKey: privateKeyU8
   } = seed
     ? ed25519.generateKeyPairFromSeed(seedToBuffer(seed))
     : ed25519.generateKeyPair()
+  
+  const skp = { publicKeyU8, privateKeyU8 }
+  skp.publicBuffer = Buffer.from(skp.publicKeyU8)
+  skp.privateBuffer = Buffer.from(privateKeyU8)
+  skp.publicHex = Buffer.from(skp.publicBuffer).toString('hex')
+  skp.privateHex = Buffer.from(skp.privateBuffer).toString('hex')
+  console.log({ skp })
+  // skp.publicBuffer = signingPublicKeyToBuffer(normal.publicKey)
+  // skp.privateBuffer = signingPrivateKeyToBuffer(normal.privateKey)
   console.log({
     fromEd25519: {
       publicKeyU8, 
