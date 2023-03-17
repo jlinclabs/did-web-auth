@@ -26,7 +26,7 @@ test('createNonce', async t => {
   t.is(createNonce(32).length, 44)
   const n1 = createNonce()
   t.is(typeof n1, 'string')
-  t.is(n1.includes(' '))
+  t.ok(!n1.includes(' '))
 })
 test('comparing signing keypairs', async t => {
   const skp1 = await generateSigningKeyPair()
@@ -124,7 +124,7 @@ test('Diffie Hellman', async t => {
 })
 
 
-test.solo('apps exchanging JWTs', async t => {
+test('apps exchanging JWTs', async t => {
   const app1 = {
     did: `did:web:app1.com`,
     encryptingKeyPair: await generateEncryptingKeyPair(),
@@ -162,7 +162,6 @@ test.solo('apps exchanging JWTs', async t => {
     expirationTime: `1h`,
     secret: app1.diffieHellman.secret,
   })
-  console.log({ jwt })
 
   const jwtPayload = await decryptJWT(jwt, app2.diffieHellman.secret, {
     issuer: app1.did,

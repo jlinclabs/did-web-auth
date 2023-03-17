@@ -108,7 +108,6 @@ export async function createEncryptedJWT({
   payload, issuer, audience, subject, expirationTime = '1month', secret
 }){
   secret = truncateSecret(secret)
-
   const jwt = await new jose.EncryptJWT(payload)
     .setProtectedHeader({ alg: 'dir', enc: 'A128CBC-HS256' })
     .setIssuedAt()
@@ -118,16 +117,12 @@ export async function createEncryptedJWT({
     .setExpirationTime(expirationTime)
     .encrypt(secret)
 
-  console.log({ jwt }, jwt.split('.'))
   return jwt
 }
 
 export async function decryptJWT(jwt, secret, options){
-  console.log('verifyJWT', {jwt, secret, options})
   secret = truncateSecret(secret)
-  // const x = await jose.generalDecrypt(jwt, secret)
   const { payload, protectedHeader } = await jose.jwtDecrypt(jwt, secret, options)
-  console.log({ payload, protectedHeader })
   return payload
 }
 
