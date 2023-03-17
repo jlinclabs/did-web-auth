@@ -257,7 +257,11 @@ async function loginWithDidWebAuth({ username, host, appDid, appSigningKeyPair }
       jws,
     })
   })
-  const data = await response.json()
+  const { did, jwe } = await response.json()
+  const didDocument = await resolveDIDDocument(did)
+  const senderEncryptionKeys = await getEncryptionKeysFromDIDDocument(didDocument)
+  // TODO try these keys
+  const data = await verifyJWE(jwe, )
   console.log({ response: data })
   /* TODO
    * create auth request object encrypted to the didDocument's keys
@@ -293,12 +297,14 @@ routes.post('/auth/did', async (req, res, next) => {
   const { did, now } = data
 
   const senderEncryptionKeys = await getEncryptionKeysFromDIDDocument(didDocument)
-  const jwe = createJWE({
-    payload:{
+  // shouldnt we sign this?!!?!
+  const jwe = await createJWE({
+    payload: {
       redirectTo: `${req.app.origin}/login/to/${host}`
     },
     recipients: senderEncryptionKeys,
   })
+  console.log({ jwe })
   res.json({ did: req.app.did, jwe })
 })
 
