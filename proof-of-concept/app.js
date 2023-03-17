@@ -51,7 +51,7 @@ app.start = async function start(){
   app.origin = `https://${host}`
   // TODO persist these keypair in the DB
   app.signingKeyPair = await generateSigningKeyPair()
-  app.encryptionKeyPair = await generateEncryptingKeyPair()
+  app.encryptingKeyPair = await generateEncryptingKeyPair()
   app.did = `did:web:${host}`
   return new Promise((resolve, reject) => {
     app.server = app.listen(port, error => {

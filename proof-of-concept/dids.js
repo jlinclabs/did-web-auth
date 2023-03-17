@@ -37,6 +37,9 @@ export async function resolveDIDDocument(did){
       `${didResolutionMetadata?.message}`
     )
   }
+  if (didDocument.id !== did) {
+    throw new Error(`invalid did document for ${did}. id mismatch.`)
+  }
   return didDocument
 }
 

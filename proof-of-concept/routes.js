@@ -42,7 +42,7 @@ homepage route
 */
 routes.get('/.well-known/did.json', async (req, res, next) => {
   // const hostPublicKey = db.getHostPublicKey()
-  const { signingKeyPair, encryptionKeyPair, host } = req.app
+  const { signingKeyPair, encryptingKeyPair, host } = req.app
   // console.log({ signingKeyPair, host })
   const did = `did:web:${host}`
   res.json({
@@ -68,7 +68,7 @@ routes.get('/.well-known/did.json', async (req, res, next) => {
         "id": `${did}#encrypting-keys-1`,
         "type": "JsonWebKey2020",
         "controller": "did:example:123",
-        "publicKeyJwk": await keyPairToPublicJWK(encryptionKeyPair),
+        "publicKeyJwk": await keyPairToPublicJWK(encryptingKeyPair),
         // "publicKeyJwk": {
         //   "kty": "EC", // external (property name)
         //   "crv": "P-256", // external (property name)
@@ -89,7 +89,7 @@ routes.get('/.well-known/did.json', async (req, res, next) => {
       //   "type": "X25519KeyAgreementKey2019",
       //   // "controller": `${did}`,
       //   "controller": `did:web:${host}`,
-      //   "publicKeyBase58": publicKeyToBase58(encryptionKeyPair.publicKey),
+      //   "publicKeyBase58": publicKeyToBase58(encryptingKeyPair.publicKey),
       // }
     ],
     "services": [
@@ -174,26 +174,27 @@ routes.post('/signin', async (req, res, next) => {
 
   if (email){
     // you could lookup a user by this email at this point
-    let loginWithDidWebAuthError
+    let loginWithDIDWebAuthError
     console.log('attempting DID Web Auth', {
       username: emailUsername,
       host: emailHost,
     })
     try{
-      const redirectUrl = await loginWithDidWebAuth({
+      const redirectUrl = await loginWithDIDWebAuth({
         username: emailUsername,
         host: emailHost,
-        appDid: req.app.did,
+        appDID: req.app.did,
         appSigningKeyPair: req.app.signingKeyPair,
+        appEncryptingKeyPair: req.app.encryptingKeyPair,
       })
       return res.redirect(redirectUrl)
     }catch(error){
-      loginWithDidWebAuthError = error
+      loginWithDIDWebAuthError = error
     }
     return renderSigninPage({
       error: (
         `${emailHost} does not appear to support did-web-auth.` +
-        ( loginWithDidWebAuthError ? `\n${loginWithDidWebAuthError.message}` : '')
+        ( loginWithDIDWebAuthError ? `\n${loginWithDIDWebAuthError.message}` : '')
       ),
     })
   }
@@ -201,42 +202,44 @@ routes.post('/signin', async (req, res, next) => {
 
 })
 
-async function loginWithDidWebAuth({ username, host, appDid, appSigningKeyPair }){
-  const hostDid = `did:web:${host}`
-  const did = `did:web:${host}:u:${username}`
-  const hostDidDocumentUrl = new URL(`https://${host}/.well-knwown/did.json`)
-  const didDocumentUrl = new URL(`https://${host}/u/${username}/did.json`)
-  console.log({ hostDid, did, hostDidDocumentUrl, didDocumentUrl })
-  // const hostDidDocument = await fetchDidDocument(hostDidDocumentUrl)
-  // if (!hostDidDocument) {
-  //   console.log(`failed to fetch host did document at ${hostDidDocumentUrl}`)
+async function loginWithDIDWebAuth({
+  username, host, appDID, appSigningKeyPair, appEncryptingKeyPair
+}){
+  const hostDID = `did:web:${host}`
+  const userDID = `did:web:${host}:u:${username}`
+  const hostDIDDocumentUrl = new URL(`https://${host}/.well-knwown/did.json`)
+  const userDIDDocumentUrl = new URL(`https://${host}/u/${username}/did.json`)
+  console.log({ hostDID, userDID, hostDIDDocumentUrl, userDIDDocumentUrl })
+  // const hostDIDDocument = await fetchDIDDocument(hostDIDDocumentUrl)
+  // if (!hostDIDDocument) {
+  //   console.log(`failed to fetch host did document at ${hostDIDDocumentUrl}`)
   //   return
   // }
 
-  const didDocument = await fetchDidDocument(didDocumentUrl)
-  if (!didDocument) {
-    throw new Error(`failed to fetch signin did document at ${didDocumentUrl}`)
+  const userDIDDocument = await fetchDIDDocument(userDIDDocumentUrl)
+  if (!userDIDDocument) {
+    throw new Error(`failed to fetch signin did document at ${userDIDDocumentUrl}`)
   }
-
-  console.log({ didDocument })
-  if (didDocument.id !== did) {
-    throw new Error(`invalid did document for signin at ${didDocumentUrl}. bad id`)
-  }
-  // search the didDocument for an auth service endpoint
-  const didWebAuthServices = (didDocument.service || [])
+  console.log({ userDIDDocument })
+  // search the userDIDDocument for an auth service endpoint
+  const didWebAuthServices = (userDIDDocument.service || [])
     .filter(service =>
       // service.id === '#did-web-auth' // TODO TDB this is more complex
-      service.type === "DidWebAuth"
+      service.type === "DIDWebAuth"
     )
 
   if (didWebAuthServices.length === 0){
-    throw new Error(`invalid did document for signin at ${didDocumentUrl}. no valid service listed`)
+    throw new Error(`invalid did document for signin at ${userDIDDocumentUrl}. no valid service listed`)
   }
   const didWebAuthService = didWebAuthServices[0] // for now just try the first matching endpoint
   const url = didWebAuthService.serviceEndpoint
   const jws = await createJWS({
     payload: {
-      did,
+      '@context': [
+        '/tbd/app-login-request'
+      ],
+      hostDID,
+      userDID,
       now: Date.now(),
     },
     signers: [
@@ -251,18 +254,27 @@ async function loginWithDidWebAuth({ username, host, appDid, appSigningKeyPair }
     },
     body: JSON.stringify({
       '@context': [
-        '/tbd/app-login-request'
+        '/tbd/host-to-host-message'
       ],
-      appDid,
+      appDID,
       jws,
     })
   })
-  const { did, jwe } = await response.json()
-  const didDocument = await resolveDIDDocument(did)
-  const senderEncryptionKeys = await getEncryptionKeysFromDIDDocument(didDocument)
+  const { did: destDID, jwe } = await response.json()
+  const destDIDDocument = await resolveDIDDocument(destDID)
+  console.log({ destDIDDocument })
+  // const senderEncryptionKeys = await getEncryptionKeysFromDIDDocument(destDIDDocument)
+  // console.log({ senderEncryptionKeys })
+  let data
+  // try{
+    console.log('decrypting with', await keyPairToPublicJWK(appEncryptingKeyPair))
+    data = await verifyJWE(jwe, appEncryptingKeyPair.privateKey)
+  // }
+  // catch(error){
+  //   console.error('verifyJWE error', error)
+  // }
   // TODO try these keys
-  const data = await verifyJWE(jwe, )
-  console.log({ response: data })
+  console.log({ data })
   /* TODO
    * create auth request object encrypted to the didDocument's keys
    * send a JWE and get a JWT
@@ -271,18 +283,21 @@ async function loginWithDidWebAuth({ username, host, appDid, appSigningKeyPair }
 }
 
 /*
-signout callback
+user login request endpoint
+
+When a user of this app tries to login to another app,
+that app will hit this endpoint:
 */
 routes.post('/auth/did', async (req, res, next) => {
-  const { appDid, jws } = req.body
-  console.log({ appDid, jws })
+  const { appDID, jws } = req.body
+  console.log({ appDID, jws })
 
-  const { host } = praseDIDWeb(appDid)
-  // get the did document of whoever send this request
-  const didDocument = await resolveDIDDocument(appDid)
-  console.log({ didDocument })
+  const { host } = praseDIDWeb(appDID)
+  // get the did document of whoever sent this request
+  const appDIDDocument = await resolveDIDDocument(appDID)
+  console.log(JSON.stringify({ appDIDDocument }, null, 2))
   // extract the signing keys from the did document
-  const senderSigningKeys = await getSigningKeysFromDIDDocument(didDocument)
+  const senderSigningKeys = await getSigningKeysFromDIDDocument(appDIDDocument)
   console.log({ senderSigningKeys })
   let data
   for (const senderSigningKey of senderSigningKeys){
@@ -296,7 +311,11 @@ routes.post('/auth/did', async (req, res, next) => {
   console.log({ data })
   const { did, now } = data
 
-  const senderEncryptionKeys = await getEncryptionKeysFromDIDDocument(didDocument)
+  const senderEncryptionKeys = await getEncryptionKeysFromDIDDocument(appDIDDocument)
+  console.log({ senderEncryptionKeys })
+  senderEncryptionKeys.forEach(async publicKey => {
+    console.log('encrypting with', await keyPairToPublicJWK({ publicKey }))
+  })
   // shouldnt we sign this?!!?!
   const jwe = await createJWE({
     payload: {
@@ -366,7 +385,7 @@ routes.get('/u/:username/did.json', async (req, res, next) => {
     ],
     "service": [
       {
-        "type": "DidWebAuth",
+        "type": "DIDWebAuth",
         "serviceEndpoint": `${origin}/auth/did`,
         "username": username,
         "profileUrl": `${origin}/@${username}`,
@@ -442,7 +461,7 @@ async function fetchJSON(url, options = {}){
   return await response.json()
 }
 
-async function fetchDidDocument(url){
+async function fetchDIDDocument(url){
   try{
     return await fetchJSON(url)
   }catch(error){

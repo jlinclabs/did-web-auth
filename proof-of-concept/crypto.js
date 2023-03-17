@@ -17,7 +17,7 @@ export async function generateEncryptingKeyPair(){
 }
 
 export async function keyPairToPublicJWK({ publicKey, privateKey }){
-  return await jose.exportJWK(privateKey)
+  return await jose.exportJWK(publicKey)
 }
 export async function keyPairToPrivateJWK({ publicKey, privateKey }){
   return await jose.exportJWK(privateKey)
