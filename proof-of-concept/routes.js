@@ -87,8 +87,13 @@ routes.get('/', async (req, res, next) => {
 signup route
 */
 routes.post('/signup', async (req, res, next) => {
-  const { username, password, passwordConfirmation, name } = req.body
-  console.log({ username, password, passwordConfirmation })
+  const {
+    username,
+    password,
+    passwordConfirmation,
+    name,
+    avatarURL,
+  } = req.body
   const renderSignupPage = locals => {
     res.render('pages/signup', { username, ...locals })
   }
@@ -97,7 +102,12 @@ routes.post('/signup', async (req, res, next) => {
   }
   let user
   try{
-    user = await db.createUser({ username, password, name })
+    user = await db.createUser({
+      username,
+      password,
+      name,
+      avatarURL,
+    })
   }catch(error){
     console.log({ error })
     return renderSignupPage({ error: `${error}` })

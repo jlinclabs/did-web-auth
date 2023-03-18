@@ -2,40 +2,59 @@
   {{#if error}}
     <div class="mb-4 text-red-700">{{error}}</div>
   {{/if}}
-  {{> formInput
-    label="Username"
-    id="username-input"
-    name="username"
-    type="text"
-    placeholder="username"
-    value=username
-  }}
-  {{> formInput
-    label="Password"
-    id="password-input"
-    name="password"
-    type="password"
-  }}
-  {{> formInput
-    label="Password Confirmation"
-    id="password-confirmation-input"
-    name="passwordConfirmation"
-    type="password"
-  }}
-  {{> formInput
-    label="Real Name"
-    id="name-input"
-    name="name"
-    type="text"
-    placeholder="name"
-  }}
-  {{> formInput
-    label="Avatar URL"
-    id="avatarURL-input"
-    name="avatarURL"
-    type="text"
-    placeholder="avatarURL"
-  }}
+  <div class="border rounded p-2 mb-2">
+    <h3 class="block text-gray-700 text-md font-bold mb-2">
+      Private Information
+    </h3>
+    <p class="text-sm max-w-sm">
+      These data represent public sharable profile information
+      about your account.
+    </p>
+    {{> formInput
+      label="Username"
+      id="username-input"
+      name="username"
+      type="text"
+      value=username
+    }}
+    {{> formInput
+      label="Password"
+      id="password-input"
+      name="password"
+      type="password"
+    }}
+    {{> formInput
+      label="Password Confirmation"
+      id="password-confirmation-input"
+      name="passwordConfirmation"
+      type="password"
+    }}
+  </div>
+  <div class="border rounded p-2 mb-2">
+    <h3 class="block text-gray-700 text-md font-bold mb-2">
+      Public Information
+    </h3>
+    <p class="text-sm max-w-sm">
+      These data represent public sharable profile information
+      about your account.
+    </p>
+    {{> formInput
+      label="Real Name"
+      id="name-input"
+      name="name"
+      type="text"
+      placeholder="Alice McPerson"
+      value=name
+    }}
+    {{> formInput
+      label="Avatar URL"
+      id="avatarURL-input"
+      name="avatarURL"
+      type="text"
+      placeholder="https://example.com/cat.jpeg"
+      value=avatarURL
+    }}
+  </div>
   <div class="flex items-center justify-end">
     <button
       class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"

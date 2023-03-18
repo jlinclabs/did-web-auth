@@ -29,9 +29,8 @@ const db = {
   async getAllUsers(){
     return await knex.select('*').from('users')
   },
-  async createUser({ username, password, name }){
+  async createUser({ username, password, name, avatarURL }){
     const passwordHash = await bcrypt.hash(password, 10)
-    // const { publicKey, privateKey } = await generateSigningKeyPair()
     const signingKeyPair = await generateSigningKeyPair()
     const publicKeyBase58 = publicKeyToBase58(signingKeyPair.publicKey)
     const signingJWK = await keyPairToPrivateJWK(signingKeyPair)
@@ -42,6 +41,7 @@ const db = {
         created_at: new Date,
         username,
         name,
+        avatar_url: avatarURL,
         password_hash: passwordHash,
         public_key: publicKeyBase58,
         signing_jwk: signingJWK,
@@ -61,7 +61,10 @@ const db = {
   async findUser({
     id,
     username,
-    select = ['id', 'username', 'name', 'created_at', 'signing_jwk', 'encrypting_jwk'],
+    select = [
+      'id', 'username', 'name', 'created_at', 'avatar_url',
+      'signing_jwk', 'encrypting_jwk'
+    ],
   }){
     const where = {}
     if (id) where.id = id
