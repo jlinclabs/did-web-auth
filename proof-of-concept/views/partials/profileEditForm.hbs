@@ -1,4 +1,4 @@
-<form action="/signup" method="post">
+<form action="/profile" method="post">
   {{#if error}}
     <div class="mb-4 text-red-700">{{error}}</div>
   {{/if}}
@@ -8,19 +8,7 @@
     name="username"
     type="text"
     placeholder="username"
-    value=username
-  }}
-  {{> formInput
-    label="Password"
-    id="password-input"
-    name="password"
-    type="password"
-  }}
-  {{> formInput
-    label="Password Confirmation"
-    id="password-confirmation-input"
-    name="passwordConfirmation"
-    type="password"
+    value=user.username
   }}
   {{> formInput
     label="Real Name"
@@ -28,6 +16,7 @@
     name="name"
     type="text"
     placeholder="name"
+    value=user.name
   }}
   {{> formInput
     label="Avatar URL"
@@ -40,6 +29,6 @@
     <button
       class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
       type="submit"
-    >Sign up</button>
+    >Update Profile</button>
   </div>
 </form>

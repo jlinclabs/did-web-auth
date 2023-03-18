@@ -16,8 +16,9 @@
     <p>
       Here is your <a class="text-blue-500 hover:text-blue-800" href="/u/{{user.username}}/did.json">DID Document</a>
     </p>
-    <div class="my-2">
-    {{> signoutForm }}
+    <div class="my-6 max-w-sm mx-auto">
+      <h3 class="text-xl font-semibold">Update your profile</h3>
+      {{> profileEditForm }}
     </div>
   </div>
 {{else}}

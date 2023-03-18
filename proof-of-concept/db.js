@@ -29,7 +29,7 @@ const db = {
   async getAllUsers(){
     return await knex.select('*').from('users')
   },
-  async createUser({ username, password }){
+  async createUser({ username, password, name }){
     const passwordHash = await bcrypt.hash(password, 10)
     // const { publicKey, privateKey } = await generateSigningKeyPair()
     const signingKeyPair = await generateSigningKeyPair()
@@ -41,6 +41,7 @@ const db = {
       .insert({
         created_at: new Date,
         username,
+        name,
         password_hash: passwordHash,
         public_key: publicKeyBase58,
         signing_jwk: signingJWK,
@@ -57,28 +58,28 @@ const db = {
     return await this.getUserById({ id: user.id })
   },
 
-  async getUserById({
+  async findUser({
     id,
-    select = ['id', 'username', 'created_at', 'signing_jwk', 'encrypting_jwk'],
+    username,
+    select = ['id', 'username', 'name', 'created_at', 'signing_jwk', 'encrypting_jwk'],
   }){
+    const where = {}
+    if (id) where.id = id
+    if (username) where.username = username
     return await knex
       .select(select)
       .from('users')
-      .where({ id })
+      .where(where)
       .first()
       .then(userRecordToUser)
   },
 
-  async getUserByUsername({
-    username,
-    select = ['id', 'username', 'created_at', 'signing_jwk', 'encrypting_jwk'],
-  }){
-    return await knex
-      .select(select)
-      .from('users')
-      .where({ username })
-      .first()
-      .then(userRecordToUser)
+  async getUserById({ id, select }){
+    return await this.findUser({ id, select })
+  },
+
+  async getUserByUsername({ username, select }){
+    return await this.findUser({ username, select })
   },
 
   async authenticateUser({username, password}){

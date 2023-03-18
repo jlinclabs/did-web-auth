@@ -87,7 +87,7 @@ routes.get('/', async (req, res, next) => {
 signup route
 */
 routes.post('/signup', async (req, res, next) => {
-  const { username, password, passwordConfirmation } = req.body
+  const { username, password, passwordConfirmation, name } = req.body
   console.log({ username, password, passwordConfirmation })
   const renderSignupPage = locals => {
     res.render('pages/signup', { username, ...locals })
@@ -97,7 +97,7 @@ routes.post('/signup', async (req, res, next) => {
   }
   let user
   try{
-    user = await db.createUser({ username, password })
+    user = await db.createUser({ username, password, name })
   }catch(error){
     console.log({ error })
     return renderSignupPage({ error: `${error}` })
@@ -394,7 +394,10 @@ routes.post('/login/to/', async (req, res, next) => {
       privateKey: req.app.signingKeyPair.privateKey,
       payload: {
         // claims: 'I make a mean smash burger'
-HEREHRRHERHREHER
+        /**
+         * I dont know what goes in here yet
+         * this is where I left off
+         */
       },
       issuer: req.app.did,
       audience: destinationHostDID,
