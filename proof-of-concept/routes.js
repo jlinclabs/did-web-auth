@@ -327,27 +327,48 @@ routes.post('/auth/did', async (req, res, next) => {
 /**
  * login to another app page
  *
+ * this page is displayed from the auth provider app
+ *
  * the user is redirected here to get permission to login
+ * to the destination app. This page propts the user to
+ * accept or reject the sign in request.
  */
 routes.get('/login/to/:host', async (req, res, next) => {
-  const { host } = req.params
-  const { userDID } = req.query
-  const returnTo = req.query.returnTo || `https://${host}`
-  // if were not logged in, redirect or reder login form
-  // if we are logged in
-  //    if userDID does not match current user
-  //        show an error?
-  if (host.toLowerCase() === req.app.host.toLowerCase()){
+  const { host: destinationHost } = req.params
+  // if were trying to login to ourselves
+  if (destinationHost.toLowerCase() === req.app.host.toLowerCase()){
+    // render an error
     res.status(400).render('pages/error', { message: 'bad request' })
   }
-  const didDocument = await resolveDIDDocument(`did:web:${host}`)
-  res.render('pages/signInToAnotherApp', {
-    app: {
-      host,
-      didDocument,
-      returnTo,
-    }
-  })
+  const { userDID } = req.query
+  if (typeof userDID !== 'string' || !userDID) {
+    return res.status(400).json({ error: `userDID is required` })
+  }
+  const returnTo = req.query.returnTo || `https://${host}`
+
+  let didHost, username
+  {
+    const matches = userDID.match(/^did:web:([^:]+):u:([^:]+)$/)
+    if (matches) ([, didHost, username] = matches)
+  }
+
+  const user = (didHost === req.app.host)
+    ? await db.getUserByUsername({ username })
+    : undefined
+
+  // if we dont find a matching user
+  if (!user) {
+    // render an error
+    return res.status(400).json({ error: `userDID "${userDID}" is not hosted here` })
+  }
+
+  // if we're logged as a different user
+  if (req.userId && req.userId !== user.id){
+    // render an error
+    return res.status(400).json({ error: `userDID "${userDID}" is not hosted here` })
+  }
+
+  res.render('pages/signInToAnotherApp', { destinationHost, returnTo })
 })
 
 routes.post('/login/to/', async (req, res, next) => {

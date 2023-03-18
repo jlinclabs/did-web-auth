@@ -17,6 +17,7 @@ export function praseDIDWeb(did){
     host: matches[1],
     path: matches[2],
   }
+  throw new Error(`invalid did:web "${did}"`)
 }
 export async function resolveDIDDocument(did){
   const {
