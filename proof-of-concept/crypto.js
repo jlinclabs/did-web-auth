@@ -104,12 +104,7 @@ function truncateSecret(secret){
   return secret.slice(0, 32)
 }
 
-export async function encryptedSignedJWE({
-  payload, issuer, audience, subject, expirationTime = '1month', secret, signWith
-}){
-
-}
-export async function encryptedSignedJWT({
+export async function createEncryptedSignedJWT({
   payload, issuer, audience, subject, expirationTime = '1month', secret,
   signWith
 }){
