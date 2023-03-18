@@ -495,17 +495,17 @@ routes.get('/login/from/:host', async (req, res, next) => {
   const authProviderSigningKeys = await getSigningKeysFromDIDDocument(authProviderDIDDocument)
   const jwtData = await verifySignedJWT(jwt, authProviderSigningKeys)
   console.log({ jwtData })
-
-  const didParts = praseDIDWeb(jwtData.subject)
+  const userDID = jwtData.sub
+  const didParts = praseDIDWeb(userDID)
+  // TODO find and update existing user
 
   const user = await db.createUser({
-    username: `${didParts.username}@${host}`,
+    did: userDID,
+    username: `${didParts.username}@${didParts.host}`,
     profileURL: jwtData.profileURL,
   })
-  res.json({
-    NOT_DONE: 'NOT_DONE YET!!',
-    jwtData,
-  })
+  await req.login(user.id)
+  res.redirect('/') // TODO pass around a destination url
 })
 
 

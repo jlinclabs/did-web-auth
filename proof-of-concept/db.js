@@ -80,6 +80,7 @@ const db = {
   async createUser({
     username, password, did, profileURL, profile
   }){
+    console.log('createUser', {username, password, did, profileURL, profile})
     const signingKeyPair = await generateSigningKeyPair()
     const signingJWK = await keyPairToPrivateJWK(signingKeyPair)
     const encryptingJWK = await keyPairToPrivateJWK(await generateEncryptingKeyPair())
@@ -141,12 +142,20 @@ const db = {
     const user = await this.knex('users').select(select).where(where).first()
     if (!user) return
 
-    const profile = await this.knex('profiles')
+    let profile = await this.knex('profiles')
       .select(['name', 'avatar_url', 'bio'])
       .where({ user_id: user.id }).first()
     console.log({ profile })
-    if (profile) user.profile = profile
-    if (!profile && user.profile_url) await fetchProfile(user.profile_url)
+    if (!profile && user.profile_url) {
+      profile = await fetchProfile(user.profile_url)
+      console.log('fetched remote profile', {userId: id, profile})
+    }
+    if (profile) {
+      user.name = profile.name
+      user.avatar_url = profile.avatar_url
+      user.bio = profile.bio
+    }
+
 
     if (includeCryptoKeys){
       const crypto_keys = await this.knex('crypto_keys').select('*').where({ user_id: user.id })
