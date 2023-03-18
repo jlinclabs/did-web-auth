@@ -453,6 +453,7 @@ routes.post('/login/to', async (req, res, next) => {
     const jwt = await createSignedJWT({
       privateKey: req.app.signingKeyPair.privateKey,
       payload: {
+        profileURL: `${req.app.origin}/@${req.user.username}/profile.json`,
         // claims: 'I make a mean smash burger'
         /**
          * I dont know what goes in here yet
@@ -512,6 +513,27 @@ routes.get('/login/from/:host', async (req, res, next) => {
   })
   await req.login(user.id)
   res.redirect('/') // TODO pass around a destination url
+})
+
+
+/**
+ * user profile as json route
+ */
+
+
+routes.get('/@:username/profile.json', async (req, res, next) => {
+  const { username } = req.params
+  const user = await db.getUserByUsername(username)
+  if (!user) return res.status(404).json({ error: 'user not found' })
+  const profile = {
+    '@context': [
+      '/tbd/profile/json-ld/schema'
+    ],
+    name: user.name,
+    avatar_url: user.avatar_url,
+    bio: user.bio,
+  }
+  res.json(profile)
 })
 
 

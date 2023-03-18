@@ -8,10 +8,16 @@
     <title>DID Auth POC</title>
     <link href="/index.css" rel="stylesheet">
   </head>
-  <body class="font-sans">
-    {{> topnav }}
-    <main class="mx-auto max-w-5xl">
-      {{{body}}}
-    </main>
+  <body class="font-sans min-h-screen">
+    <div class="min-h-screen flex flex-col">
+      {{> topnav }}
+      <main class="mx-auto max-w-5xl">
+        {{{body}}}
+      </main>
+      <footer class="mt-auto justify-self-center p-4">
+        Written by Jared Grippe ©2023 |
+        <a href="/debug">debug</a>
+      </footer>
+    </div>
   </body>
 </html>

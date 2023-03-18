@@ -152,7 +152,7 @@ const db = {
     console.log({ profile })
     if (!profile && user.profile_url) {
       profile = await fetchProfile(user.profile_url)
-      console.log('fetched remote profile', {userId: id, profile})
+      console.log('fetched remote profile', {userId: user.id, profile})
     }
     if (profile) {
       user.name = profile.name
@@ -201,4 +201,16 @@ export default db
 
 async function deserializeKeyPairs(user, prop){
   user[prop] &&= await keyPairFromJWK(JSON.parse(user[prop]))
+}
+
+async function fetchProfile(url){
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: {
+      accepts: 'application/json'
+    }
+  })
+  const profile = res.json()
+  // TODO json-ld checks
+  return profile
 }
