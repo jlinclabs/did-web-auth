@@ -193,16 +193,12 @@ async function loginWithDIDWebAuth({
   username, host, hostDID, hostSigningKeyPair, hostEncryptingKeyPair
 }){
   const userDID = `did:web:${host}:u:${username}`
-  const hostDIDDocumentUrl = new URL(`https://${host}/.well-knwown/did.json`)
-  const userDIDDocumentUrl = new URL(`https://${host}/u/${username}/did.json`)
-  console.log({ hostDID, userDID, hostDIDDocumentUrl, userDIDDocumentUrl })
-  // const hostDIDDocument = await fetchDIDDocument(hostDIDDocumentUrl)
-  // if (!hostDIDDocument) {
-  //   console.log(`failed to fetch host did document at ${hostDIDDocumentUrl}`)
-  //   return
-  // }
 
-  const userDIDDocument = await fetchDIDDocument(userDIDDocumentUrl)
+  const hostDIDDocument = await resolveDIDDocument(hostDID)
+  console.log({ hostDIDDocument })
+  // TODO validate the host harder
+
+  const userDIDDocument = await resolveDIDDocument(userDID)
   if (!userDIDDocument) {
     throw new Error(`failed to fetch signin did document at ${userDIDDocumentUrl}`)
   }
@@ -492,14 +488,5 @@ async function fetchJSON(url, options = {}){
       : undefined,
   })
   return await response.json()
-}
-
-async function fetchDIDDocument(url){
-  try{
-    return await fetchJSON(url)
-  }catch(error){
-    console.log(`failed to fetch DID Document from ${url}`)
-    console.error(error)
-  }
 }
 

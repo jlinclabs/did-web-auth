@@ -19,17 +19,11 @@ export function praseDIDWeb(did){
   }
 }
 export async function resolveDIDDocument(did){
-  console.log('[resolve did]', { did })
   const {
     didDocument,
     didDocumentMetadata,
     didResolutionMetadata,
   } = await resolver.resolve(did)
-  console.log('[resolve did]', {
-    didDocument,
-    didDocumentMetadata,
-    didResolutionMetadata,
-  })
   if (didResolutionMetadata?.error){
     throw new Error(
       `failed to resolve DID="${did}" ` +
