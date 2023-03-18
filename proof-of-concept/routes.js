@@ -161,9 +161,9 @@ routes.post('/signin', async (req, res, next) => {
       let redirectUrl = await loginWithDIDWebAuth({
         username: emailUsername,
         host: emailHost,
-        appDID: req.app.did,
-        appSigningKeyPair: req.app.signingKeyPair,
-        appEncryptingKeyPair: req.app.encryptingKeyPair,
+        hostDID: req.app.did,
+        hostSigningKeyPair: req.app.signingKeyPair,
+        hostEncryptingKeyPair: req.app.encryptingKeyPair,
       })
       redirectUrl = new URL(redirectUrl)
       redirectUrl.searchParams.set('returnTo', `${req.app.origin}/welcome`)
@@ -190,9 +190,8 @@ routes.post('/signin', async (req, res, next) => {
  *
  */
 async function loginWithDIDWebAuth({
-  username, host, appDID, appSigningKeyPair, appEncryptingKeyPair
+  username, host, hostDID, hostSigningKeyPair, hostEncryptingKeyPair
 }){
-  const hostDID = `did:web:${host}`
   const userDID = `did:web:${host}:u:${username}`
   const hostDIDDocumentUrl = new URL(`https://${host}/.well-knwown/did.json`)
   const userDIDDocumentUrl = new URL(`https://${host}/u/${username}/did.json`)
@@ -231,7 +230,7 @@ async function loginWithDIDWebAuth({
       requestId: createNonce(),
     },
     signers: [
-      appSigningKeyPair.privateKey
+      hostSigningKeyPair.privateKey
     ]
   })
   console.log({ jws })
@@ -244,14 +243,14 @@ async function loginWithDIDWebAuth({
       '@context': [
         '/tbd/host-to-host-message'
       ],
-      appDID,
+      hostDID,
       jws,
     })
   })
   const { jwe } = await response.json()
   // const destDIDDocument = await resolveDIDDocument(destDID) // TODO do we really need this step? dont we already know this stuff
   // console.log({ destDIDDocument })
-  const data = await verifyJWE(jwe, appEncryptingKeyPair.privateKey)
+  const data = await verifyJWE(jwe, hostEncryptingKeyPair.privateKey)
   console.log({ data })
   if (data.redirectTo) return data.redirectTo
   throw new Error('NOT DONE YET')
@@ -263,31 +262,31 @@ user login request endpoint
 This endpoint is used by other apps trying to sign a
 user into their app.
 
-appDID - the sending app's DID
+hostDID - the sending app's DID
 jws - a JSON Web Signature token containing { hostDID, userDID, now, requestId }
 */
 routes.post('/auth/did', async (req, res, next) => {
-  const { appDID, jws } = req.body
-  console.log({ appDID, jws })
+  const { hostDID, jws } = req.body
+  console.log({ hostDID, jws })
 
   /**
    * here is where apps can optionally white/black list
    * other sites from login requests
    */
 
-  const { host } = praseDIDWeb(appDID)
+  const { host } = praseDIDWeb(hostDID)
   // get the did document of whoever sent this request
-  const appDIDDocument = await resolveDIDDocument(appDID)
-  console.log(JSON.stringify({ appDIDDocument }, null, 2))
+  const hostDIDDocument = await resolveDIDDocument(hostDID)
+  console.log(JSON.stringify({ hostDIDDocument }, null, 2))
   // extract the signing keys from the did document
-  const senderSigningKeys = await getSigningKeysFromDIDDocument(appDIDDocument)
+  const senderSigningKeys = await getSigningKeysFromDIDDocument(hostDIDDocument)
   const data = await verifyJWS(jws, senderSigningKeys)
-  const { hostDID, userDID, now, requestId } = data
+  const { userDID, now, requestId } = data
 
 
   // TODO check that the useDID actually maps to a user in this app
 
-  const senderEncryptionKeys = await getEncryptionKeysFromDIDDocument(appDIDDocument)
+  const senderEncryptionKeys = await getEncryptionKeysFromDIDDocument(hostDIDDocument)
   console.log({ senderEncryptionKeys })
   // shouldnt we sign this?!!?!
   const redirectTo = new URL(`${req.app.origin}/login/to/${host}`)
