@@ -4,7 +4,7 @@ import * as KeyResolver from 'key-did-resolver'
 import * as WebResolver from 'web-did-resolver'
 import { Ed25519Provider } from 'key-did-provider-ed25519'
 import { DID } from 'dids'
-import { publicKeyFromBase58, publicKeyFromJWK } from './crypto.js'
+import { publicKeyFromJWK } from './crypto.js'
 
 const resolver = new Resolver({
   ...KeyResolver.getResolver(),

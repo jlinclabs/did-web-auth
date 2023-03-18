@@ -30,7 +30,6 @@ export async function keyPairToPrivateJWK({ publicKey, privateKey }){
   return await jose.exportJWK(privateKey)
 }
 export function publicKeyFromJWK(publicJWK){
-  console.log('publicKeyFromJWK', publicJWK)
   return crypto.createPublicKey({ format: 'jwk', key: publicJWK })
 }
 export async function keyPairFromJWK(privateJWK){

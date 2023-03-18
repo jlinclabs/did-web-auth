@@ -3,7 +3,8 @@ import bodyParser from 'body-parser'
 import { create } from 'express-handlebars'
 import toColor from '@mapbox/to-color'
 
-import { generateSigningKeyPair, generateEncryptingKeyPair } from './crypto.js'
+import { publicKeyToBuffer } from './crypto.js'
+import db from './db.js'
 import { sessionRoutes } from './session.js'
 import routes from './routes.js'
 const app = express()
@@ -48,11 +49,14 @@ app.start = async function start(){
 
   app.host = host
   app.origin = `https://${host}`
-
-  // TODO persist these keypair in the DB
-  app.signingKeyPair = await generateSigningKeyPair()
-  app.encryptingKeyPair = await generateEncryptingKeyPair()
   app.did = `did:web:${host}`
+  console.log('APP DID', app.did)
+
+  const cryptoKeyPairs = await db.getOrCreateAppCryptoKeyPairs()
+  app.signingKeyPair = cryptoKeyPairs.signingKeyPairs[0]
+  app.encryptingKeyPair = cryptoKeyPairs.encryptingKeyPairs[0]
+  console.log('APP signing public key', publicKeyToBuffer(app.signingKeyPair.publicKey).toString('base64url'))
+  console.log('APP encrypting public key', publicKeyToBuffer(app.encryptingKeyPair.publicKey).toString('base64url'))
 
   const appColor = new toColor(`${host}:${port}${port}${port}`).getColor().hsl.formatted
   app.locals.appColor = appColor

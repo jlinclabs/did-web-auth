@@ -484,21 +484,11 @@ routes.get('/login/from/:host', async (req, res, next) => {
   const authProviderDIDDocument = await resolveDIDDocument(authProviderDID)
   console.log({ authProviderDIDDocument }, authProviderDIDDocument.verificationMethod)
   const authProviderSigningKeys = await getSigningKeysFromDIDDocument(authProviderDIDDocument)
-  console.log({ authProviderSigningKeys })
-
-  console.log('🔺 VERIFYING WITH',
-    await Promise.all(
-      authProviderSigningKeys.map(publicKeyToJWK)
-    )
-  )
-
-  const data = await verifySignedJWT(jwt, authProviderSigningKeys)
+  const jwtData = await verifySignedJWT(jwt, authProviderSigningKeys)
 
   res.json({
     NOT_DONE: 1,
-    params: req.params,
-    query: req.query,
-    data,
+    jwtData,
   })
 })
 
