@@ -11,8 +11,8 @@ import {
   verifyJWS,
   createJWE,
   verifyJWE,
-  createJWT,
-  verifyJWT,
+  createEncryptedJWT,
+  decryptJWT,
 } from './crypto.js'
 import {
   praseDIDWeb,
@@ -347,7 +347,7 @@ routes.post('/login/to/', async (req, res, next) => {
   accept = accept === '1'
   // if (!accept) return res.redirect
 
-  const jwt = await createJWT({
+  const jwt = await createEncryptedJWT({
     payload: {
       appDID: hostDID,
       hostDID: req.app.did,
@@ -360,6 +360,7 @@ routes.post('/login/to/', async (req, res, next) => {
     expirationTime: `${duration}${durationUnit}`,
     // encryptionKey:
   })
+  console.log({ jwt })
 
   // const jwe = await createJWE({
   //   jwt

@@ -124,7 +124,7 @@ test('Diffie Hellman', async t => {
 })
 
 
-test('apps exchanging JWTs', async t => {
+test('apps exchanging JWTs using Diffie Hellman', async t => {
   const app1 = {
     did: `did:web:app1.com`,
     encryptingKeyPair: await generateEncryptingKeyPair(),
@@ -152,6 +152,7 @@ test('apps exchanging JWTs', async t => {
 
   // Alice constructs a JWT for BOB
   const jwt = await createEncryptedJWT({
+    signWith: app1.signingKeyPair.privateKey,
     payload: {
       something: 'important',
       also: 'dont forget',
@@ -163,7 +164,10 @@ test('apps exchanging JWTs', async t => {
     secret: app1.diffieHellman.secret,
   })
 
-  const jwtPayload = await decryptJWT(jwt, app2.diffieHellman.secret, {
+  const jwtPayload = await decryptJWT({
+    jwt,
+    secret: app2.diffieHellman.secret,
+    publicKey: app1.signingKeyPair.publicKey,
     issuer: app1.did,
     audience: app2.did,
   })
@@ -180,6 +184,35 @@ test('apps exchanging JWTs', async t => {
     }
   )
 })
+
+// test.solo('apps exchanging JWTs using public keys', async t => {
+//   const app1 = {
+//     did: `did:web:app1.com`,
+//     encryptingKeyPair: await generateEncryptingKeyPair(),
+//     signingKeyPair: await generateSigningKeyPair(),
+//   }
+//   const app2 = {
+//     did: `did:web:app2.com`,
+//     encryptingKeyPair: await generateEncryptingKeyPair(),
+//     signingKeyPair: await generateSigningKeyPair(),
+//   }
+//   console.log({ app2 })
+//   const jwt = await createEncryptedJWT({
+//     payload: {
+//       superSecret: 42,
+//       yourPII: { name: 'steve' },
+//     },
+//     issuer: app1.did,
+//     audience: app2.did,
+//     subject: app2.did+':u:alicia',
+//     expirationTime: `1h`,
+//     // secret: app2.encryptingKeyPair.publicKey,
+//     publicKey: app2.encryptingKeyPair.publicKey,
+//   })
+//   console.log({ jwt })
+
+// })
+
 // test('generate signing keys from seed', async t => {
 //   // await generateSigningKeyPair()
 //   const skp1 = await generateSigningKeyPair('seed one')

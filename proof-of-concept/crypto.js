@@ -105,24 +105,42 @@ function truncateSecret(secret){
 }
 
 export async function createEncryptedJWT({
-  payload, issuer, audience, subject, expirationTime = '1month', secret
+  payload, issuer, audience, subject, expirationTime = '1month', secret,
+  signWith
 }){
-  secret = truncateSecret(secret)
-  const jwt = await new jose.EncryptJWT(payload)
-    .setProtectedHeader({ alg: 'dir', enc: 'A128CBC-HS256' })
-    .setIssuedAt()
-    .setIssuer(issuer)
-    .setAudience(audience)
-    .setSubject(subject)
-    .setExpirationTime(expirationTime)
-    .encrypt(secret)
+  const signedJWT = await new jose.SignJWT(payload)
+    .setProtectedHeader({ alg: 'EdDSA' })
+    .sign(signWith)
 
-  return jwt
+  console.log({ signedJWT })
+
+  const proto = new jose.EncryptJWT({ signedJWT })
+  proto.setProtectedHeader({ alg: 'dir', enc: 'A128CBC-HS256' })
+  proto.setIssuedAt()
+  proto.setIssuer(issuer)
+  proto.setAudience(audience)
+  proto.setSubject(subject)
+  proto.setExpirationTime(expirationTime)
+  return await proto.encrypt(truncateSecret(secret))
+  // if (secret) return await proto.encrypt(truncateSecret(secret))
+  // if (publicKey) return await proto.encrypt(publicKey)
+  // return jwt
 }
 
-export async function decryptJWT(jwt, secret, options){
+export async function decryptJWT({
+  jwt, secret, publicKey, issuer, audience,
+}){
   secret = truncateSecret(secret)
+  const options = { issuer, audience }
   const { payload, protectedHeader } = await jose.jwtDecrypt(jwt, secret, options)
+  if (payload.signedJWT){
+    const {
+      payload: innerPayload,
+      protectedHeader: innerProtectedHeader,
+    } = await jose.jwtVerify(payload.signedJWT, publicKey)
+    delete payload.signedJWT
+    Object.assign(payload, innerPayload)
+  }
   return payload
 }
 
