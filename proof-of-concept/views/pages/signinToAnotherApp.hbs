@@ -23,7 +23,7 @@
     <div class="my-6">
       <form action="/login/to" method="POST">
         {{!-- TODO ensure no cross-domain posts with a CSRF variable --}}
-        <input type="hidden" name="host" value="{{destinationHost}}"/>
+        <input type="hidden" name="destinationHost" value="{{destinationHost}}"/>
         <input type="hidden" name="returnTo" value="{{returnTo}}"/>
 
 

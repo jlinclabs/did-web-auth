@@ -371,11 +371,22 @@ routes.get('/login/to/:host', async (req, res, next) => {
   res.render('pages/signInToAnotherApp', { destinationHost, returnTo })
 })
 
+
+/**
+ * This is the route that the above route's form posts to
+ *
+ * Then the user accepts or rejects the request to login
+ * it posts here
+ */
 routes.post('/login/to/', async (req, res, next) => {
-  let { host, accept, returnTo, userDID, duration, durationUnit } = req.body
-  const hostDID = `did:web:${host}`
-  const didDocument = await resolveDIDDocument(hostDID)
-  returnTo = new URL(returnTo || `https://${host}`)
+  let { destinationHost, returnTo, accept, duration, durationUnit } = req.body
+  const destinationHostDID = `did:web:${destinationHost}`
+  const destinationHostDIDDocument = await resolveDIDDocument(destinationHostDID)
+  console.log({ destinationHostDIDDocument })
+  returnTo = new URL(returnTo || `https://${destinationHost}`)
+
+  const userDID = `did:web:${req.app.host}:u:${req.user.username}`
+  console.log({ userDID })
 
   if (accept === '1') {
     // create a signed JWT as the new issues auth token
@@ -383,9 +394,10 @@ routes.post('/login/to/', async (req, res, next) => {
       privateKey: req.app.signingKeyPair.privateKey,
       payload: {
         // claims: 'I make a mean smash burger'
+HEREHRRHERHREHER
       },
       issuer: req.app.did,
-      audience: hostDID,
+      audience: destinationHostDID,
       subject: userDID,
       expirationTime: `${duration}${durationUnit}`,
     })
@@ -395,6 +407,15 @@ routes.post('/login/to/', async (req, res, next) => {
   }
   res.redirect(returnTo)
 })
+
+
+
+routes.post('/login/to/', async (req, res, next) => {
+
+  res.json({ NOT_DONE: 1 })
+})
+
+
 
 /*
 signout callback
