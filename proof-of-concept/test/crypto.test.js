@@ -11,8 +11,8 @@ import {
   verifyJWS,
   createJWE,
   verifyJWE,
-  createEncryptedJWT,
-  decryptJWT,
+  encryptedSignedJWT,
+  decryptSignedJWT,
   publicKeyToBase58,
   publicKeyFromBase58,
   createDiffieHellman,
@@ -151,7 +151,7 @@ test('apps exchanging JWTs using Diffie Hellman', async t => {
   )
 
   // Alice constructs a JWT for BOB
-  const jwt = await createEncryptedJWT({
+  const jwt = await encryptedSignedJWT({
     signWith: app1.signingKeyPair.privateKey,
     payload: {
       something: 'important',
@@ -164,7 +164,7 @@ test('apps exchanging JWTs using Diffie Hellman', async t => {
     secret: app1.diffieHellman.secret,
   })
 
-  const jwtPayload = await decryptJWT({
+  const jwtPayload = await decryptSignedJWT({
     jwt,
     secret: app2.diffieHellman.secret,
     publicKey: app1.signingKeyPair.publicKey,
@@ -197,7 +197,7 @@ test('apps exchanging JWTs using Diffie Hellman', async t => {
 //     signingKeyPair: await generateSigningKeyPair(),
 //   }
 //   console.log({ app2 })
-//   const jwt = await createEncryptedJWT({
+//   const jwt = await encryptedSignedJWT({
 //     payload: {
 //       superSecret: 42,
 //       yourPII: { name: 'steve' },
