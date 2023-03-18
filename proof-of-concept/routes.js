@@ -5,14 +5,13 @@ import Router from 'express-promise-router'
 import db from './db.js'
 import {
   createNonce,
-  publicKeyToBase58,
   keyPairToPublicJWK,
   createJWS,
   verifyJWS,
   createJWE,
   verifyJWE,
-  createEncryptedSignedJWT,
-  decryptSignedJWT,
+  createSignedJWT,
+  verifySignedJWT,
 } from './crypto.js'
 import {
   praseDIDWeb,
@@ -261,8 +260,11 @@ async function loginWithDIDWebAuth({
 /*
 user login request endpoint
 
-When a user of this app tries to login to another app,
-that app will hit this endpoint:
+This endpoint is used by other apps trying to sign a
+user into their app.
+
+appDID - the sending app's DID
+jws - a JSON Web Signature token containing { hostDID, userDID, now, requestId }
 */
 routes.post('/auth/did', async (req, res, next) => {
   const { appDID, jws } = req.body
@@ -279,7 +281,6 @@ routes.post('/auth/did', async (req, res, next) => {
   console.log(JSON.stringify({ appDIDDocument }, null, 2))
   // extract the signing keys from the did document
   const senderSigningKeys = await getSigningKeysFromDIDDocument(appDIDDocument)
-  console.log({ senderSigningKeys })
   let data
   for (const senderSigningKey of senderSigningKeys){
     try{
@@ -289,7 +290,6 @@ routes.post('/auth/did', async (req, res, next) => {
       console.error('verifyJWS error'. error)
     }
   }
-  console.log({ data })
   const { hostDID, userDID, now, requestId } = data
 
 
@@ -304,7 +304,7 @@ routes.post('/auth/did', async (req, res, next) => {
   const jwe = await createJWE({
     payload: {
       redirectTo,
-      hostDID,
+      hostDID, // redundant?
       userDID,
       requestId,
     },
@@ -344,30 +344,24 @@ routes.post('/login/to/', async (req, res, next) => {
   let { host, accept, returnTo, userDID, duration, durationUnit } = req.body
   const hostDID = `did:web:${host}`
   const didDocument = await resolveDIDDocument(hostDID)
-  accept = accept === '1'
-  // if (!accept) return res.redirect
+  returnTo = new URL(returnTo || `https://${host}`)
 
-  const jwt = await createEncryptedSignedJWT({
-    payload: {
-      appDID: hostDID,
-      hostDID: req.app.did,
-      userDID,
-      // 'urn:example:claim': true
-    },
-    issuer: req.app.did,
-    audience: hostDID,
-    subject: userDID,
-    expirationTime: `${duration}${durationUnit}`,
-    // encryptionKey:
-  })
-  console.log({ jwt })
-
-  // const jwe = await createJWE({
-  //   jwt
-
-  // })
-  returnTo = new URL(returnTo)
-  redirectUrl.searchParams.set('jwt', jwt)
+  if (accept === '1') {
+    // create a signed JWT as the new issues auth token
+    const jwt = await createSignedJWT({
+      privateKey: req.app.signingKeyPair.privateKey,
+      payload: {
+        // claims: 'I make a mean smash burger'
+      },
+      issuer: req.app.did,
+      audience: hostDID,
+      subject: userDID,
+      expirationTime: `${duration}${durationUnit}`,
+    })
+    returnTo.searchParams.set('jwt', jwt)
+  }else{
+    returnTo.searchParams.set('rejected', '1')
+  }
   res.redirect(returnTo)
 })
 

@@ -11,6 +11,8 @@ import {
   verifyJWS,
   createJWE,
   verifyJWE,
+  createSignedJWT,
+  verifySignedJWT,
   createEncryptedSignedJWT,
   decryptSignedJWT,
   publicKeyToBase58,
@@ -124,7 +126,42 @@ test('Diffie Hellman', async t => {
 })
 
 
-test('apps exchanging JWTs using Diffie Hellman', async t => {
+test('apps exchanging signed JWTs', async t => {
+  const app1 = {
+    did: `did:web:app1.com`,
+    encryptingKeyPair: await generateEncryptingKeyPair(),
+    signingKeyPair: await generateSigningKeyPair(),
+  }
+  const app2 = {
+    did: `did:web:app2.com`,
+    encryptingKeyPair: await generateEncryptingKeyPair(),
+    signingKeyPair: await generateSigningKeyPair(),
+  }
+
+  const jwt = await createSignedJWT({
+    privateKey: app1.signingKeyPair.privateKey,
+    payload: { claims: 'I make a mean smash burger' },
+    issuer: app1.did,
+    audience: app2.did,
+    subject: app2.did+':u:alan',
+  })
+  const payload = await verifySignedJWT({
+    jwt,
+    publicKey: app1.signingKeyPair.publicKey,
+  })
+  t.is(typeof payload.iat, 'number')
+  t.is(typeof payload.exp, 'number')
+  t.alike(payload, {
+    claims: 'I make a mean smash burger',
+    iat: payload.iat,
+    iss: 'did:web:app1.com',
+    aud: 'did:web:app2.com',
+    sub: 'did:web:app2.com:u:alan',
+    exp: payload.exp,
+  })
+})
+
+test('apps exchanging encrypted and signed JWTs using Diffie Hellman', async t => {
   const app1 = {
     did: `did:web:app1.com`,
     encryptingKeyPair: await generateEncryptingKeyPair(),

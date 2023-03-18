@@ -104,17 +104,39 @@ function truncateSecret(secret){
   return secret.slice(0, 32)
 }
 
+export async function createSignedJWT({
+  privateKey, payload, issuer, audience, subject, expirationTime = '4weeks',
+}){
+  const signedJWT = await new jose.SignJWT(payload)
+    .setProtectedHeader({ alg: 'EdDSA' })
+    .setIssuedAt()
+    .setIssuer(issuer)
+    .setAudience(audience)
+    .setSubject(subject)
+    .setExpirationTime(expirationTime)
+    .sign(privateKey)
+  return signedJWT
+}
+
+export async function verifySignedJWT({
+  jwt, publicKey
+}){
+  const { payload, protectedHeader } = await jose.jwtVerify(jwt, publicKey)
+  return payload
+}
+
 export async function createEncryptedSignedJWT({
   payload, issuer, audience, subject, expirationTime = '1month', secret,
   signWith
 }){
-  const signedJWT = await new jose.SignJWT(payload)
-    .setProtectedHeader({ alg: 'EdDSA' })
-    .sign(signWith)
+  if (signWith){
+    const signedJWT = await new jose.SignJWT(payload)
+      .setProtectedHeader({ alg: 'EdDSA' })
+      .sign(signWith)
+    payload = { signedJWT }
+  }
 
-  console.log({ signedJWT })
-
-  const proto = new jose.EncryptJWT({ signedJWT })
+  const proto = new jose.EncryptJWT(payload)
   proto.setProtectedHeader({ alg: 'dir', enc: 'A128CBC-HS256' })
   proto.setIssuedAt()
   proto.setIssuer(issuer)
