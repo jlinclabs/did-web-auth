@@ -160,11 +160,11 @@ routes.post('/signin', async (req, res, next) => {
     })
     try{
       let redirectUrl = await loginWithDIDWebAuth({
+        ourHostDID: req.app.did,
+        ourHostSigningKeyPair: req.app.signingKeyPair,
+        ourHostEncryptingKeyPair: req.app.encryptingKeyPair,
         username: emailUsername,
-        host: emailHost,
-        hostDID: req.app.did,
-        hostSigningKeyPair: req.app.signingKeyPair,
-        hostEncryptingKeyPair: req.app.encryptingKeyPair,
+        authProviderHost: emailHost,
       })
       redirectUrl = new URL(redirectUrl)
       redirectUrl.searchParams.set('returnTo', `${req.app.origin}/login/from`)
@@ -190,12 +190,15 @@ routes.post('/signin', async (req, res, next) => {
  * the DID Web Auth spec.
  */
 async function loginWithDIDWebAuth({
-  username, host, hostDID, hostSigningKeyPair, hostEncryptingKeyPair
+  ourHostDID, ourHostSigningKeyPair, ourHostEncryptingKeyPair,
+  username, authProviderHost,
 }){
-  const userDID = `did:web:${host}:u:${username}`
+  const authProviderDID = `did:web:${authProviderHost}`
+  const userDID = `${authProviderDID}:u:${username}`
 
-  const hostDIDDocument = await resolveDIDDocument(hostDID)
-  console.log({ hostDIDDocument })
+  const authProviderDIDDocument = await resolveDIDDocument(authProviderDID)
+  const authProviderSigningKeys = await getSigningKeysFromDIDDocument(authProviderDIDDocument)
+  console.log({ authProviderDIDDocument, authProviderSigningKeys })
   // TODO validate the host harder
 
   const userDIDDocument = await resolveDIDDocument(userDID)
@@ -215,7 +218,7 @@ async function loginWithDIDWebAuth({
   }
   const didWebAuthService = didWebAuthServices[0] // for now just try the first matching endpoint
   const url = didWebAuthService.serviceEndpoint
-  const jws = await createJWS({
+  const outgoingJWS = await createJWS({
     payload: {
       '@context': [
         '/tbd/app-login-request'
@@ -225,7 +228,7 @@ async function loginWithDIDWebAuth({
       requestId: createNonce(),
     },
     signers: [
-      hostSigningKeyPair.privateKey
+      ourHostSigningKeyPair.privateKey
     ]
   })
   const response = await fetch(url, {
@@ -237,12 +240,12 @@ async function loginWithDIDWebAuth({
       '@context': [
         '/tbd/host-to-host-message'
       ],
-      hostDID,
-      jws,
+      hostDID: ourHostDID,
+      jws: outgoingJWS,
     })
   })
-  const { jwe } = await response.json()
-  const data = await verifyJWE(jwe, hostEncryptingKeyPair.privateKey)
+  const { jws: incomingJWS } = await response.json()
+  const data = await verifyJWS(incomingJWS, authProviderSigningKeys)
   console.log({ data })
   if (data.redirectTo) return data.redirectTo
   throw new Error('NOT DONE YET')
@@ -276,8 +279,13 @@ body:
       - requestId
 */
 routes.post('/auth/did', async (req, res, next) => {
-  const { hostDID, jws } = req.body
-  console.log({ hostDID, jws })
+  const { hostDID, jws: incomingJWS } = req.body
+  if (!hostDID){
+    res.status(400).json({ error: 'hostDID is require' })
+  }
+  if (!incomingJWS){
+    res.status(400).json({ error: 'jws is require' })
+  }
 
   /**
    * here is where apps can optionally white/black list
@@ -290,30 +298,30 @@ routes.post('/auth/did', async (req, res, next) => {
   console.log(JSON.stringify({ hostDIDDocument }, null, 2))
   // extract the signing keys from the did document
   const senderSigningKeys = await getSigningKeysFromDIDDocument(hostDIDDocument)
-  const data = await verifyJWS(jws, senderSigningKeys)
+  const data = await verifyJWS(incomingJWS, senderSigningKeys)
   const { userDID, now, requestId } = data
   // TODO check now to see if its too old
 
   console.log('🔺🔺🔺🔺', { hostDID })
   // TODO check that the useDID actually maps to a user in this app
 
-  const senderEncryptionKeys = await getEncryptionKeysFromDIDDocument(hostDIDDocument)
-  console.log({ senderEncryptionKeys })
+  // const senderEncryptionKeys = await getEncryptionKeysFromDIDDocument(hostDIDDocument)
+  // console.log({ senderEncryptionKeys })
 
   const redirectTo = new URL(`${req.app.origin}/login/to/${host}`)
   redirectTo.searchParams.set('userDID', userDID)
 
-  const jwe = await createJWE({
+  const jws = await createJWS({
     payload: {
       redirectTo,
       hostDID, // redundant?
       userDID,
       requestId,
     },
-    recipients: senderEncryptionKeys,
+    signers: [req.app.signingKeyPair.privateKey],
   })
-  console.log({ jwe })
-  res.json({ did: req.app.did, jwe })
+  console.log({ jws })
+  res.json({ did: req.app.did, jws })
 })
 
 /**
