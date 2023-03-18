@@ -350,7 +350,7 @@ routes.post('/auth/did', async (req, res, next) => {
   if (req.app.host !== userDIDParts.host){
     return res.status(404).json({ error: 'user not found' })
   }
-  const user = await db.getUserByUsername({ username: userDIDParts.username })
+  const user = await db.getUserByUsername(userDIDParts.username)
   // TODO check that the useDID actually maps to a user in this app
 
   // const senderEncryptionKeys = await getEncryptionKeysFromDIDDocument(destinationDIDDocument)
@@ -411,7 +411,7 @@ routes.get('/login/to/:host', async (req, res, next) => {
   }
 
   const user = (didHost === req.app.host)
-    ? await db.getUserByUsername({ username })
+    ? await db.getUserByUsername(username)
     : undefined
 
   // if we dont find a matching user
@@ -499,7 +499,13 @@ routes.get('/login/from/:host', async (req, res, next) => {
   const didParts = praseDIDWeb(userDID)
   // TODO find and update existing user
 
-  const user = await db.createUser({
+  /**
+   *  we need to make sure that one of the users singing keys
+   *  has signed something we gave them before this point
+   *
+   *  that serves as their authentication
+   **/
+  const user = await db.findOrCreateRemoteUser({
     did: userDID,
     username: `${didParts.username}@${didParts.host}`,
     profileURL: jwtData.profileURL,
@@ -534,7 +540,7 @@ GET /u/alice
 routes.get('/u/:username/did.json', async (req, res, next) => {
   const { username } = req.params
   console.log({ username })
-  const user = await db.getUserByUsername({username})
+  const user = await db.getUserByUsername(username)
   console.log({ user })
   if (!user) return res.status(404).json({
     error: 'not found'

@@ -125,20 +125,24 @@ const db = {
       }
       throw error
     })
-    return await this.getUserById({ id: userId })
+    return await this.getUserById(userId)
+  },
+
+  async findOrCreateRemoteUser({ did, username, profileURL }){
+    let user = await this.getUserByDID(did)
+    user ||= await this.createUser({ did, username, profileURL })
+    return user
   },
 
   async findUser({
-    id,
-    username,
-    select = [ 'id', 'username', 'created_at', 'profile_url' ],
+    where = {},
+    select = [ 'id', 'did', 'username', 'created_at', 'profile_url' ],
     includePasswordHash = false,
     includeCryptoKeys = true,
   }){
     if (includePasswordHash) select.push('password_hash')
-    const where = {}
-    if (id) where.id = id
-    if (username) where.username = username
+    console.log({ select })
+    console.log({ where })
     const user = await this.knex('users').select(select).where(where).first()
     if (!user) return
 
@@ -169,22 +173,25 @@ const db = {
     return user
   },
 
-  async getUserById({ id, ...opts }){
-    return await this.findUser({ id, ...opts })
+  async getUserById(id, opts){
+    return await this.findUser({ ...opts, where: { id } })
   },
 
-  async getUserByUsername({ username, ...opts }){
-    return await this.findUser({ username, ...opts })
+  async getUserByUsername(username, opts){
+    return await this.findUser({ ...opts, where: { username } })
+  },
+
+  async getUserByDID(did, opts){
+    return await this.findUser({ ...opts, where: { did } })
   },
 
   async authenticateUser({username, password}){
-    const record = await this.getUserByUsername({
-      username,
+    const record = await this.getUserByUsername(username, {
       includePasswordHash: true,
     })
     if (!record) return
     const match = await bcrypt.compare(password, record.password_hash);
-    if (match) return await this.getUserById({ id: record.id })
+    if (match) return await this.getUserById(record.id)
   }
 }
 
