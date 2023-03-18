@@ -12,13 +12,15 @@ const resolver = new Resolver({
 })
 
 export function praseDIDWeb(did){
-  const matches = did.match(/^did:web:([^:]+)(?::(.*)|$)/)
-  if (matches) return {
-    host: matches[1],
-    path: matches[2],
-  }
-  throw new Error(`invalid did:web "${did}"`)
+  const matches = did.match(/^did:web:([^:]+)(:u:([^:]+)$|:.*|$)/)
+  if (!matches) throw new Error(`invalid did:web "${did}"`)
+  const parts = {}
+  parts.host = matches[1]
+  if (matches[2]) parts.path = matches[2]
+  if (matches[3]) parts.username = matches[3]
+  return parts
 }
+
 export async function resolveDIDDocument(did){
   const {
     didDocument,

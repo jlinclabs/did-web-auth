@@ -6,6 +6,8 @@ import db from './db.js'
 import {
   createNonce,
   keyPairToPublicJWK,
+  publicKeyFromJWK,
+  publicKeyToJWK,
   createJWS,
   verifyJWS,
   createJWE,
@@ -39,9 +41,11 @@ routes.use(async (req, res, next) => {
   next()
 })
 
-/*
-the DID Document route for this http host
-*/
+/**
+ * the DID Document route
+ *
+ * This route is required but all parties
+ */
 routes.get('/.well-known/did.json', async (req, res, next) => {
   // const hostPublicKey = db.getHostPublicKey()
   const { signingKeyPair, encryptingKeyPair, host } = req.app
@@ -74,9 +78,9 @@ routes.get('/.well-known/did.json', async (req, res, next) => {
 })
 
 
-/*
-homepage route
-*/
+/**
+ * homepage route
+ */
 routes.get('/', async (req, res, next) => {
   res.render('pages/home', {
     email: 'jared@did-auth2.test', //TODO remove me
@@ -84,8 +88,8 @@ routes.get('/', async (req, res, next) => {
 })
 
 /*
-signup route
-*/
+ * signup route
+ */
 routes.post('/signup', async (req, res, next) => {
   const {
     username,
@@ -125,8 +129,12 @@ routes.post('/signup', async (req, res, next) => {
 })
 
 /*
-signin route
-*/
+ * signin route
+ *
+ * All apps need a signin route, this routes serves
+ * as both the classic username + password and the
+ * new DID Web Auth endpoint.
+ */
 routes.post('/signin', async (req, res, next) => {
   let { username, password, email } = req.body
   console.log('/signin', { username, password, email })
@@ -177,7 +185,11 @@ routes.post('/signin', async (req, res, next) => {
         authProviderHost: emailHost,
       })
       redirectUrl = new URL(redirectUrl)
-      redirectUrl.searchParams.set('returnTo', `${req.app.origin}/login/from`)
+      /**
+       *
+       * here is where you can specify the callback url
+       **/
+      redirectUrl.searchParams.set('returnTo', `${req.app.origin}/login/from/${emailHost}`)
       console.log({ redirectUrl })
       return res.redirect(redirectUrl)
     }catch(error){
@@ -198,6 +210,8 @@ routes.post('/signin', async (req, res, next) => {
 /**
  * This function is intended to isolate part of the steps dictated by
  * the DID Web Auth spec.
+ *
+ * Code like this might be wrapped in a shared library
  */
 async function loginWithDIDWebAuth({
   ourHostDID, ourHostSigningKeyPair, ourHostEncryptingKeyPair,
@@ -207,9 +221,9 @@ async function loginWithDIDWebAuth({
   const userDID = `${authProviderDID}:u:${username}`
 
   const authProviderDIDDocument = await resolveDIDDocument(authProviderDID)
+  // TODO validate the host's DID Document harder
   const authProviderSigningKeys = await getSigningKeysFromDIDDocument(authProviderDIDDocument)
   console.log({ authProviderDIDDocument, authProviderSigningKeys })
-  // TODO validate the host harder
 
   const userDIDDocument = await resolveDIDDocument(userDID)
   if (!userDIDDocument) {
@@ -256,20 +270,21 @@ async function loginWithDIDWebAuth({
   })
   const { jws: incomingJWS } = await response.json()
   const data = await verifyJWS(incomingJWS, authProviderSigningKeys)
-  console.log({ data })
+  console.log('destination app received response from auth provider', data)
   if (data.redirectTo) return data.redirectTo
-  throw new Error('NOT DONE YET')
+  throw new Error('unsupported response from auth provider')
 }
 
 /*
 user login request endpoint
 
-This endpoint is used by other apps trying to sign a
-user into their app.
+The is an auth provider endpoint
 
-The auth destination app sends
-a JWS to the auth provider app containing a session
-request.
+This endpoint is used by destination apps to sign in
+a user into their app.
+
+The auth destination app sends a JWS to the auth
+provider app containing a session request.
 
 The Auth provider responds with a JWE
 containing information on how to the destination app
@@ -289,12 +304,16 @@ body:
       - requestId
 */
 routes.post('/auth/did', async (req, res, next) => {
-  const { hostDID, jws: incomingJWS } = req.body
-  if (!hostDID){
-    res.status(400).json({ error: 'hostDID is require' })
+  const {
+    hostDID: destinationDID,
+    jws: incomingJWS
+  } = req.body
+  //
+  if (!destinationDID){
+    res.status(400).json({ error: 'destinationDID is required' })
   }
   if (!incomingJWS){
-    res.status(400).json({ error: 'jws is require' })
+    res.status(400).json({ error: 'jws is required' })
   }
 
   /**
@@ -302,42 +321,62 @@ routes.post('/auth/did', async (req, res, next) => {
    * other sites from login requests
    */
 
-  const { host } = praseDIDWeb(hostDID)
+  const { host: destinationHost } = praseDIDWeb(destinationDID)
+  if (req.app.host === destinationHost){
+    return res.status(401).json({ error: 'your host cannot be our host' })
+  }
   // get the did document of whoever sent this request
-  const hostDIDDocument = await resolveDIDDocument(hostDID)
-  console.log(JSON.stringify({ hostDIDDocument }, null, 2))
+  const destinationDIDDocument = await resolveDIDDocument(destinationDID)
+  console.log({ destinationDID })
+
+  console.log(JSON.stringify({ destinationDIDDocument }, null, 2))
   // extract the signing keys from the did document
-  const senderSigningKeys = await getSigningKeysFromDIDDocument(hostDIDDocument)
+  const senderSigningKeys = await getSigningKeysFromDIDDocument(destinationDIDDocument)
   const data = await verifyJWS(incomingJWS, senderSigningKeys)
   const { userDID, now, requestId } = data
   // TODO check now to see if its too old
 
-  console.log('🔺🔺🔺🔺', { hostDID })
+  console.log({ destinationDID })
+  const userDIDParts = praseDIDWeb(userDID)
+  if (req.app.host !== userDIDParts.host){
+    return res.status(404).json({ error: 'user not found' })
+  }
+  const user = await db.getUserByUsername({ username: userDIDParts.username })
   // TODO check that the useDID actually maps to a user in this app
 
-  // const senderEncryptionKeys = await getEncryptionKeysFromDIDDocument(hostDIDDocument)
+  // const senderEncryptionKeys = await getEncryptionKeysFromDIDDocument(destinationDIDDocument)
   // console.log({ senderEncryptionKeys })
 
-  const redirectTo = new URL(`${req.app.origin}/login/to/${host}`)
+  /**
+   * This redirectTo tells the destination app where to redirect
+   * the user at the auth provider app to prompt for authorization
+   */
+  const redirectTo = new URL(`${req.app.origin}/login/to/${destinationHost}`)
   redirectTo.searchParams.set('userDID', userDID)
 
+  /**
+   * This JWS…
+   */
   const jws = await createJWS({
     payload: {
       redirectTo,
-      hostDID, // redundant?
+      // hostDID, // redundant?
       userDID,
       requestId,
     },
     signers: [req.app.signingKeyPair.privateKey],
   })
-  console.log({ jws })
+  console.log(
+    `auth provider responding to destination app`,
+    { did: req.app.did, jws }
+  )
   res.json({ did: req.app.did, jws })
 })
 
 /**
- * login to another app page
+ * login to another app page route
  *
- * this page is displayed from the auth provider app
+ * This is an Auth Provider route
  *
  * the user is redirected here to get permission to login
  * to the destination app. This page propts the user to
@@ -388,7 +427,7 @@ routes.get('/login/to/:host', async (req, res, next) => {
  * Then the user accepts or rejects the request to login
  * it posts here
  */
-routes.post('/login/to/', async (req, res, next) => {
+routes.post('/login/to', async (req, res, next) => {
   let { destinationHost, returnTo, accept, duration, durationUnit } = req.body
   const destinationHostDID = `did:web:${destinationHost}`
   const destinationHostDIDDocument = await resolveDIDDocument(destinationHostDID)
@@ -400,6 +439,8 @@ routes.post('/login/to/', async (req, res, next) => {
 
   if (accept === '1') {
     // create a signed JWT as the new issues auth token
+    console.log('🔺 SIGNGING WITH', await keyPairToPublicJWK(req.app.signingKeyPair))
+
     const jwt = await createSignedJWT({
       privateKey: req.app.signingKeyPair.privateKey,
       payload: {
@@ -418,14 +459,47 @@ routes.post('/login/to/', async (req, res, next) => {
   }else{
     returnTo.searchParams.set('rejected', '1')
   }
+  console.log(`auth provider redirecting back to destination app ${returnTo}`)
   res.redirect(returnTo)
 })
 
 
+/**
+ * complete DID Web Auth sign in
+ *
+ * this is a destination app routes
+ *
+ * the JWT from the above route is sent from the auth
+ * provider to this route at the destination app
+ *
+ * the JWT should be signed by the auth provider and
+ * contain claims we need to access any auth provider
+ * APIs
+ */
+routes.get('/login/from/:host', async (req, res, next) => {
+  const { host } = req.params
+  const { jwt } = req.query
 
-routes.post('/login/to/', async (req, res, next) => {
+  const authProviderDID = `did:web:${host}`
+  const authProviderDIDDocument = await resolveDIDDocument(authProviderDID)
+  console.log({ authProviderDIDDocument }, authProviderDIDDocument.verificationMethod)
+  const authProviderSigningKeys = await getSigningKeysFromDIDDocument(authProviderDIDDocument)
+  console.log({ authProviderSigningKeys })
 
-  res.json({ NOT_DONE: 1 })
+  console.log('🔺 VERIFYING WITH',
+    await Promise.all(
+      authProviderSigningKeys.map(publicKeyToJWK)
+    )
+  )
+
+  const data = await verifySignedJWT(jwt, authProviderSigningKeys)
+
+  res.json({
+    NOT_DONE: 1,
+    params: req.params,
+    query: req.query,
+    data,
+  })
 })
 
 

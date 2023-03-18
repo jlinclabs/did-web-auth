@@ -7,14 +7,14 @@ test('praseDIDWeb', async t => {
     praseDIDWeb('did:web:example.com'),
     {
       host: 'example.com',
-      path: undefined,
     }
   )
   t.alike(
     praseDIDWeb('did:web:example.com:u:jared'),
     {
       host: 'example.com',
-      path: 'u:jared',
+      path: ':u:jared',
+      username: 'jared'
     }
   )
 })

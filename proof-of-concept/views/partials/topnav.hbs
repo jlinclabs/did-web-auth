@@ -1,14 +1,14 @@
 <div style="background-color: {{appColor}};">
-  <div class="p-2 grid gap-2 grid-cols-3 items-center mx-auto max-w-5xl">
-    <a class="text-blue-500 hover:text-blue-800" href="/">
+  <div class="whitespace-nowrap h-20 p-2 grid gap-2 grid-cols-3 items-center mx-auto max-w-5xl">
+    <a class="text-black text-xl" href="/">
       {{host}}
     </a>
-    <a class="justify-self-center text-xl text-blue-500 hover:text-blue-800" href="/">
+    <a class="justify-self-center text-2xl text-black" href="/">
       DID Auth POC
     </a>
     <div class="justify-self-end">
       {{#if user}}
-        <div class="flex gap-2">
+        <div class="flex gap-2 items-center ">
           <div>
             {{#if user.avatar_url}}
             <img

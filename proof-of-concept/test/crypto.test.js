@@ -5,6 +5,8 @@ import {
   generateEncryptingKeyPair,
   keyPairToPrivateJWK,
   keyPairFromJWK,
+  publicKeyToJWK,
+  publicKeyFromJWK,
   isSamePublicKeyObject,
   isSamePrivateKeyObject,
   createJWS,
@@ -43,9 +45,12 @@ test('serializing signing keypair', async t => {
   const skp1 = await generateSigningKeyPair()
   const skp1JWK = await keyPairToPrivateJWK(skp1)
   const skp1Copy = await keyPairFromJWK(JSON.parse(JSON.stringify(skp1JWK)))
+  const publicKeyAsJWK = await publicKeyToJWK(skp1.publicKey)
+  // const publicKeyFromJWK = await publicKeyFromJWK(skp1.publicKey)
   t.ok(isSamePublicKeyObject(skp1.publicKey, skp1Copy.publicKey))
   t.ok(isSamePrivateKeyObject(skp1Copy.privateKey, skp1.privateKey))
   t.ok(isSamePublicKeyObject(skp1.publicKey, publicKeyFromBase58(publicKeyToBase58(skp1.publicKey))))
+  t.ok(isSamePublicKeyObject(skp1.publicKey, await publicKeyFromJWK(publicKeyAsJWK)))
 })
 
 test('JWKs', async t => {
@@ -153,10 +158,7 @@ test('apps exchanging signed JWTs', async t => {
     audience: app2.did,
     subject: app2.did+':u:alan',
   })
-  const payload = await verifySignedJWT({
-    jwt,
-    publicKey: app1.signingKeyPair.publicKey,
-  })
+  const payload = await verifySignedJWT(jwt, [app1.signingKeyPair.publicKey])
   t.is(typeof payload.iat, 'number')
   t.is(typeof payload.exp, 'number')
   t.alike(payload, {

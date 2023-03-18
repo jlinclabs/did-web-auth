@@ -20,13 +20,17 @@ export async function generateEncryptingKeyPair(){
   return crypto.generateKeyPairSync('x25519')
 }
 
-export async function keyPairToPublicJWK({ publicKey, privateKey }){
+export async function publicKeyToJWK(publicKey){
   return await jose.exportJWK(publicKey)
+}
+export async function keyPairToPublicJWK({ publicKey, privateKey }){
+  return await publicKeyToJWK(publicKey)
 }
 export async function keyPairToPrivateJWK({ publicKey, privateKey }){
   return await jose.exportJWK(privateKey)
 }
 export function publicKeyFromJWK(publicJWK){
+  console.log('publicKeyFromJWK', publicJWK)
   return crypto.createPublicKey({ format: 'jwk', key: publicJWK })
 }
 export async function keyPairFromJWK(privateJWK){
@@ -73,9 +77,9 @@ export async function createJWS({ payload, signers }){
   return await proto.sign()
 }
 
+
 export async function verifyJWS(jws, publicKeys){
   if (!Array.isArray(publicKeys)) publicKeys = [publicKeys]
-
   let lastError, result
   for (const publicKey of publicKeys){
     try{
@@ -89,9 +93,6 @@ export async function verifyJWS(jws, publicKeys){
     return JSON.parse(payload)
   }
   if (lastError) throw lastError
-  // const { payload, protectedHeader } = await jose.generalVerify(jws, publicKey)
-  // // console.log({ protectedHeader })
-  // return JSON.parse(payload)
 }
 
 export async function createJWE({ payload, recipients }){
@@ -133,11 +134,23 @@ export async function createSignedJWT({
   return signedJWT
 }
 
-export async function verifySignedJWT({
-  jwt, publicKey
-}){
-  const { payload, protectedHeader } = await jose.jwtVerify(jwt, publicKey)
-  return payload
+export async function verifySignedJWT(jwt, publicKeys){
+  // const { payload, protectedHeader } = await jose.jwtVerify(jwt, publicKey)
+  // return payload
+  if (!Array.isArray(publicKeys)) publicKeys = [publicKeys]
+  let lastError, result
+  for (const publicKey of publicKeys){
+    try{
+      result = await jose.jwtVerify(jwt, publicKey)
+    }catch(error){
+      lastError = error
+    }
+  }
+  if (result){
+    const { payload, protectedHeader } = result
+    return payload
+  }
+  if (lastError) throw lastError
 }
 
 export async function createEncryptedSignedJWT({

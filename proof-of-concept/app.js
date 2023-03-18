@@ -42,17 +42,21 @@ app.use(routes)
 app.start = async function start(){
   const port = app.get('port')
   const host = app.get('host')
-  const appColor = new toColor(`${host}`).getColor().hsl.formatted
-  app.set('appColor', appColor)
+  // app.set('appColor', appColor)
   app.locals.host = host
   app.locals.port = port
-  app.locals.appColor = appColor
+
   app.host = host
   app.origin = `https://${host}`
+
   // TODO persist these keypair in the DB
   app.signingKeyPair = await generateSigningKeyPair()
   app.encryptingKeyPair = await generateEncryptingKeyPair()
   app.did = `did:web:${host}`
+
+  const appColor = new toColor(`${host}:${port}${port}${port}`).getColor().hsl.formatted
+  app.locals.appColor = appColor
+
   return new Promise((resolve, reject) => {
     app.server = app.listen(port, error => {
       if (error) reject(error)
