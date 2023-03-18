@@ -112,6 +112,7 @@ routes.post('/signup', async (req, res, next) => {
       name,
       avatarURL,
     })
+    console.log('F')
   }catch(error){
     console.log({ error })
     return renderSignupPage({ error: `${error}` })
@@ -487,7 +488,7 @@ routes.get('/login/from/:host', async (req, res, next) => {
   const jwtData = await verifySignedJWT(jwt, authProviderSigningKeys)
 
   res.json({
-    NOT_DONE: 1,
+    NOT_DONE: 'NOT_DONE YET!!',
     jwtData,
   })
 })
@@ -539,13 +540,13 @@ routes.get('/u/:username/did.json', async (req, res, next) => {
         "id": `${did}#signing-keys-1`,
         "type": "JsonWebKey2020",
         "controller": req.app.did,
-        "publicKeyJwk": await keyPairToPublicJWK(user.signing_jwk),
+        "publicKeyJwk": await keyPairToPublicJWK(user.signing_key_pair),
       },
       {
         "id": `${did}#encrypting-keys-1`,
         "type": "JsonWebKey2020",
         "controller": req.app.did,
-        "publicKeyJwk": await keyPairToPublicJWK(user.encrypting_jwk),
+        "publicKeyJwk": await keyPairToPublicJWK(user.encrypting_key_pair),
       },
     ],
     "authentication": [

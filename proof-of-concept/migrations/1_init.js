@@ -7,8 +7,8 @@ export async function up(knex) {
     table.increments('id')
     table.timestamps(true, true)
     table.string('username').notNullable().unique()
-    table.string('name').notNullable().unique()
-    table.string('avatar_url').notNullable().unique()
+    table.string('name').notNullable()
+    table.string('avatar_url').notNullable()
     table.string('password_hash').notNullable()
   })
 

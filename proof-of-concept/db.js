@@ -43,7 +43,6 @@ const db = {
       encryptingKeyPairs.push(keyPair)
       keyPairsToInsert.push(['encrypting', keyPair])
     }
-
     if (keyPairsToInsert.length > 0){
       console.log('CREATING APP CRYPTO KEYS')
       await knex('crypto_keys').insert(
@@ -59,9 +58,7 @@ const db = {
           })
         )
       )
-
     }
-
     return { signingKeyPairs, encryptingKeyPairs }
   },
   async getAllSessions(){
@@ -71,25 +68,22 @@ const db = {
     return await knex.select('*').from('users')
   },
   async createUser({ username, password, name, avatarURL }){
+    console.log('A')
     const passwordHash = await bcrypt.hash(password, 10)
     const signingKeyPair = await generateSigningKeyPair()
     const publicKeyBase58 = publicKeyToBase58(signingKeyPair.publicKey)
     const signingJWK = await keyPairToPrivateJWK(signingKeyPair)
     const encryptingJWK = await keyPairToPrivateJWK(await generateEncryptingKeyPair())
-
-    await knex.transaction(async knex => {
-      const [user] = await knex
+    console.log('B')
+    const user = await knex.transaction(async knex => {
+      const [user] = await knex('users')
         .insert({
           created_at: new Date,
           username,
           name,
           avatar_url: avatarURL,
           password_hash: passwordHash,
-          public_key: publicKeyBase58,
-          signing_jwk: signingJWK,
-          encrypting_jwk: encryptingJWK,
         })
-        .into('users')
         .returning('id')
         .catch(error => {
           if (error.message.includes('UNIQUE constraint failed: users.username')){
@@ -97,45 +91,55 @@ const db = {
           }
           throw error
         })
-
-      await knex()
-        .insert([
-          {
-            user_id: user.id,
-            public_key: signingJWK.x,
-            jwk: signingJWK,
-            type: 'signing',
-          },
-          {
-            user_id: user.id,
-            public_key: encryptingJWK.x,
-            jwk: encryptingJWK,
-            type: 'encrypting',
-          },
-        ])
-        .into('crypto_keys')
-
-      return await this.getUserById({ id: user.id })
+        console.log('C')
+      await knex('crypto_keys').insert([
+        {
+          user_id: user.id,
+          public_key: signingJWK.x,
+          jwk: JSON.stringify(signingJWK),
+          type: 'signing',
+        },
+        {
+          user_id: user.id,
+          public_key: encryptingJWK.x,
+          jwk: JSON.stringify(encryptingJWK),
+          type: 'encrypting',
+        },
+      ])
+      console.log('D')
+      return user
     })
+    console.log('E')
+    return await this.getUserById({ id: user.id })
   },
 
   async findUser({
     id,
     username,
-    select = [
-      'id', 'username', 'name', 'created_at', 'avatar_url',
-      'signing_jwk', 'encrypting_jwk'
-    ],
+    select = [ 'id', 'username', 'name', 'created_at', 'avatar_url' ],
+    includeCryptoKeys = true
   }){
     const where = {}
     if (id) where.id = id
     if (username) where.username = username
-    return await knex
+    const user = await knex
       .select(select)
       .from('users')
       .where(where)
       .first()
       .then(userRecordToUser)
+
+    if (!user) return
+    if (includeCryptoKeys){
+      const crypto_keys = await knex('crypto_keys').select('*').where({ user_id: user.id })
+      for (const type of ['signing', 'encrypting']){
+        const record = crypto_keys.find(k => k.type === type)
+        const keyPair = await keyPairFromJWK(JSON.parse(record.jwk))
+        user[`${type}_key_pair`] = keyPair
+      }
+    }
+    console.log({ user })
+    return user
   },
 
   async getUserById({ id, select }){
