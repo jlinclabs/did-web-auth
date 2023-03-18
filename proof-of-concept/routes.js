@@ -40,7 +40,7 @@ routes.use(async (req, res, next) => {
 })
 
 /*
-homepage route
+the DID Document route for this http host
 */
 routes.get('/.well-known/did.json', async (req, res, next) => {
   // const hostPublicKey = db.getHostPublicKey()
@@ -72,6 +72,7 @@ routes.get('/.well-known/did.json', async (req, res, next) => {
     ]
   })
 })
+
 
 /*
 homepage route
@@ -166,7 +167,7 @@ routes.post('/signin', async (req, res, next) => {
         hostEncryptingKeyPair: req.app.encryptingKeyPair,
       })
       redirectUrl = new URL(redirectUrl)
-      redirectUrl.searchParams.set('returnTo', `${req.app.origin}/welcome`)
+      redirectUrl.searchParams.set('returnTo', `${req.app.origin}/login/from`)
       console.log({ redirectUrl })
       return res.redirect(redirectUrl)
     }catch(error){
@@ -185,9 +186,8 @@ routes.post('/signin', async (req, res, next) => {
 })
 
 /**
- *
- *
- *
+ * This function is intended to isolate part of the steps dictated by
+ * the DID Web Auth spec.
  */
 async function loginWithDIDWebAuth({
   username, host, hostDID, hostSigningKeyPair, hostEncryptingKeyPair
@@ -220,7 +220,6 @@ async function loginWithDIDWebAuth({
       '@context': [
         '/tbd/app-login-request'
       ],
-      hostDID,
       userDID,
       now: Date.now(),
       requestId: createNonce(),
@@ -229,7 +228,6 @@ async function loginWithDIDWebAuth({
       hostSigningKeyPair.privateKey
     ]
   })
-  console.log({ jws })
   const response = await fetch(url, {
     method: 'POST',
     headers: {
@@ -244,8 +242,6 @@ async function loginWithDIDWebAuth({
     })
   })
   const { jwe } = await response.json()
-  // const destDIDDocument = await resolveDIDDocument(destDID) // TODO do we really need this step? dont we already know this stuff
-  // console.log({ destDIDDocument })
   const data = await verifyJWE(jwe, hostEncryptingKeyPair.privateKey)
   console.log({ data })
   if (data.redirectTo) return data.redirectTo
@@ -258,8 +254,26 @@ user login request endpoint
 This endpoint is used by other apps trying to sign a
 user into their app.
 
-hostDID - the sending app's DID
-jws - a JSON Web Signature token containing { hostDID, userDID, now, requestId }
+The auth destination app sends
+a JWS to the auth provider app containing a session
+request.
+
+The Auth provider responds with a JWE
+containing information on how to the destination app
+can continue the sign in process.
+
+The only supported option in this POC is a redirect
+url. Much like oauth, the destination app receives a
+redirectTo url from the Auth provider and redirects
+the user there.
+
+body:
+  - hostDID `the sending app's DID`
+  - jws `a JSON Web Signature token`
+    - payload
+      - userDID
+      - now
+      - requestId
 */
 routes.post('/auth/did', async (req, res, next) => {
   const { hostDID, jws } = req.body
@@ -278,13 +292,14 @@ routes.post('/auth/did', async (req, res, next) => {
   const senderSigningKeys = await getSigningKeysFromDIDDocument(hostDIDDocument)
   const data = await verifyJWS(jws, senderSigningKeys)
   const { userDID, now, requestId } = data
+  // TODO check now to see if its too old
 
-
+  console.log('🔺🔺🔺🔺', { hostDID })
   // TODO check that the useDID actually maps to a user in this app
 
   const senderEncryptionKeys = await getEncryptionKeysFromDIDDocument(hostDIDDocument)
   console.log({ senderEncryptionKeys })
-  // shouldnt we sign this?!!?!
+
   const redirectTo = new URL(`${req.app.origin}/login/to/${host}`)
   redirectTo.searchParams.set('userDID', userDID)
 
