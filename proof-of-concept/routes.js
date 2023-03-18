@@ -107,15 +107,20 @@ routes.post('/signup', async (req, res, next) => {
   let user
   try{
     user = await db.createUser({
+      did: `did:web:${req.app.host}:u:${username}`,
       username,
       password,
       name,
       avatarURL,
     })
-    console.log('F')
   }catch(error){
     console.log({ error })
-    return renderSignupPage({ error: `${error}` })
+    return renderSignupPage({
+      error: `${error}`,
+      username,
+      name,
+      avatarURL,
+    })
   }
   console.log({ user })
   await req.login(user.id)
@@ -486,7 +491,14 @@ routes.get('/login/from/:host', async (req, res, next) => {
   console.log({ authProviderDIDDocument }, authProviderDIDDocument.verificationMethod)
   const authProviderSigningKeys = await getSigningKeysFromDIDDocument(authProviderDIDDocument)
   const jwtData = await verifySignedJWT(jwt, authProviderSigningKeys)
+  console.log({ jwtData })
 
+  const didParts = praseDIDWeb(jwtData.subject)
+
+  const user = await db.createUser({
+    username: `${didParts.username}@${host}`,
+    profileURL: jwtData.profileURL,
+  })
   res.json({
     NOT_DONE: 'NOT_DONE YET!!',
     jwtData,
@@ -586,29 +598,11 @@ routes.get('/u/:identifier', async (req, res, next) => {
 debug route
 */
 routes.get('/debug', async (req, res, next) => {
-  // sessionStore.get(sid, fn)
-  // sessionStore.set(sid, sessObject, fn)
-  // sessionStore.touch(sid, sess, fn)
-  // sessionStore.destroy(sid, fn)
-  // sessionStore.length(fn)
-  // sessionStore.clear(fn)
-  // sessionStore.stopDbCleanup()
-  // sessionStore.getNextDbCleanup()
-  // sessionStore.all(fn)
-
-  // const sessions = new Promise((resolve, reject) => {
-  //   sessionStore.all((error, sessions) => {
-  //     if (error) return reject(error)
-  //     resolve(sessions)
-  //   })
-  // })
-
-  const sessions = await db.getAllSessions()
-  const users = await db.getAllUsers()
   res.render('pages/debug', {
     debug: {
-      sessions,
-      users,
+      users: await db.knex.select('*').from('users'),
+      profiles: await db.knex.select('*').from('profiles'),
+      sessions: await db.knex.select('*').from('sessions'),
     }
   })
 })

@@ -23,8 +23,9 @@ await knex.migrate.latest()
 
 
 const db = {
+  knex,
   async getOrCreateAppCryptoKeyPairs(){
-    const keys = await knex.select('*').from('crypto_keys').whereNull('user_id')
+    const keys = await this.knex.select('*').from('crypto_keys').whereNull('user_id')
     const signingKeyPairs = []
     const encryptingKeyPairs = []
     for (const key of keys){
@@ -45,7 +46,7 @@ const db = {
     }
     if (keyPairsToInsert.length > 0){
       console.log('CREATING APP CRYPTO KEYS')
-      await knex('crypto_keys').insert(
+      await this.knex('crypto_keys').insert(
         await Promise.all(
           keyPairsToInsert.map(async ([type, keyPair]) => {
             const jwk = await keyPairToPrivateJWK(keyPair)
@@ -61,77 +62,77 @@ const db = {
     }
     return { signingKeyPairs, encryptingKeyPairs }
   },
-  async getAllSessions(){
-    return await knex.select('*').from('sessions')
-  },
-  async getAllUsers(){
-    return await knex.select('*').from('users')
-  },
-  async createUser({ username, password, name, avatarURL }){
-    console.log('A')
-    const passwordHash = await bcrypt.hash(password, 10)
+
+  async createUser({
+    username, password, did,
+    profileURL, name, avatarURL, bio
+  }){
     const signingKeyPair = await generateSigningKeyPair()
-    const publicKeyBase58 = publicKeyToBase58(signingKeyPair.publicKey)
     const signingJWK = await keyPairToPrivateJWK(signingKeyPair)
     const encryptingJWK = await keyPairToPrivateJWK(await generateEncryptingKeyPair())
-    console.log('B')
-    const user = await knex.transaction(async knex => {
-      const [user] = await knex('users')
-        .insert({
-          created_at: new Date,
-          username,
-          name,
-          avatar_url: avatarURL,
-          password_hash: passwordHash,
-        })
-        .returning('id')
-        .catch(error => {
-          if (error.message.includes('UNIQUE constraint failed: users.username')){
-            throw new Error(`a user with the username ${username} already exists.`)
-          }
-          throw error
-        })
-        console.log('C')
-      await knex('crypto_keys').insert([
+    const usersRecord = { username, did }
+    if (password) usersRecord.password_hash = await bcrypt.hash(password, 10)
+    let profileRecord
+    if (profileURL){
+      usersRecord.profile_url = profileURL
+    }else{
+      profileRecord = {}
+      if (name) profileRecord.name = name
+      if (avatarURL) profileRecord.avatar_url = avatarURL
+      // if (bio) profileRecord.bio = bio
+    }
+    const userId = await this.knex.transaction(async knex => {
+      const [{id: userId}] = await this.knex('users').insert(usersRecord).returning('id')
+      if (profileRecord){
+        await this.knex('profiles').insert(profileRecord).returning()
+      }
+
+      await this.knex('crypto_keys').insert([
         {
-          user_id: user.id,
+          user_id: userId,
           public_key: signingJWK.x,
           jwk: JSON.stringify(signingJWK),
           type: 'signing',
         },
         {
-          user_id: user.id,
+          user_id: userId,
           public_key: encryptingJWK.x,
           jwk: JSON.stringify(encryptingJWK),
           type: 'encrypting',
         },
       ])
-      console.log('D')
-      return user
+      return userId
+    }).catch(error => {
+      if (error.message.includes('UNIQUE constraint failed: users.username')){
+        throw new Error(`a user with the username ${username} already exists.`)
+      }
+      throw error
     })
-    console.log('E')
-    return await this.getUserById({ id: user.id })
+    return await this.getUserById({ id: userId })
   },
 
   async findUser({
     id,
     username,
-    select = [ 'id', 'username', 'name', 'created_at', 'avatar_url' ],
-    includeCryptoKeys = true
+    select = [ 'id', 'username', 'created_at' ],
+    includePasswordHash = false,
+    includeCryptoKeys = true,
   }){
+    if (includePasswordHash) select.push('password_hash')
     const where = {}
     if (id) where.id = id
     if (username) where.username = username
-    const user = await knex
+    const user = await this.knex
       .select(select)
       .from('users')
       .where(where)
+      .leftJoin('profiles', 'users.id', 'profiles.user_id')
       .first()
       .then(userRecordToUser)
 
     if (!user) return
     if (includeCryptoKeys){
-      const crypto_keys = await knex('crypto_keys').select('*').where({ user_id: user.id })
+      const crypto_keys = await this.knex('crypto_keys').select('*').where({ user_id: user.id })
       for (const type of ['signing', 'encrypting']){
         const record = crypto_keys.find(k => k.type === type)
         const keyPair = await keyPairFromJWK(JSON.parse(record.jwk))
@@ -142,18 +143,18 @@ const db = {
     return user
   },
 
-  async getUserById({ id, select }){
-    return await this.findUser({ id, select })
+  async getUserById({ id, ...opts }){
+    return await this.findUser({ id, ...opts })
   },
 
-  async getUserByUsername({ username, select }){
-    return await this.findUser({ username, select })
+  async getUserByUsername({ username, ...opts }){
+    return await this.findUser({ username, ...opts })
   },
 
   async authenticateUser({username, password}){
     const record = await this.getUserByUsername({
       username,
-      select: ['id', 'password_hash']
+      includePasswordHash: true,
     })
     if (!record) return
     const match = await bcrypt.compare(password, record.password_hash);

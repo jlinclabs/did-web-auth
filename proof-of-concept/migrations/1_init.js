@@ -6,10 +6,10 @@ export async function up(knex) {
   await knex.schema.createTable('users', function (table) {
     table.increments('id')
     table.timestamps(true, true)
+    table.string('did').notNullable().unique()
     table.string('username').notNullable().unique()
-    table.string('name').notNullable()
-    table.string('avatar_url').notNullable()
     table.string('password_hash').notNullable()
+    table.string('profile_url').nullable()
   })
 
   await knex.schema.createTable('crypto_keys', function (table) {
@@ -28,6 +28,13 @@ export async function up(knex) {
     table.timestamps(true, true)
   })
 
+  await knex.schema.createTable('profiles', function (table) {
+    table.integer('user_id').primary()
+    table.foreign('user_id').references('users.id')
+    table.string('name').nullable()
+    table.string('avatar_url').nullable()
+    table.string('bio').nullable()
+  })
 }
 
 /**
