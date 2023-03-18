@@ -281,15 +281,7 @@ routes.post('/auth/did', async (req, res, next) => {
   console.log(JSON.stringify({ appDIDDocument }, null, 2))
   // extract the signing keys from the did document
   const senderSigningKeys = await getSigningKeysFromDIDDocument(appDIDDocument)
-  let data
-  for (const senderSigningKey of senderSigningKeys){
-    try{
-      data = await verifyJWS(jws, senderSigningKey)
-      break
-    }catch(error){
-      console.error('verifyJWS error'. error)
-    }
-  }
+  const data = await verifyJWS(jws, senderSigningKeys)
   const { hostDID, userDID, now, requestId } = data
 
 

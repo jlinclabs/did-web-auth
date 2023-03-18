@@ -59,7 +59,15 @@ test('JWSs', async t => {
     payload: { panda: 18 },
     signers: [skp1.privateKey]
   })
-  const payload = await verifyJWS(jws, skp1.publicKey)
+  await t.exception(async () => {
+    await verifyJWS(jws, [
+      skp2.publicKey, // bad key to try
+    ])
+  })
+  const payload = await verifyJWS(jws, [
+    skp2.publicKey, // bad key to try
+    skp1.publicKey, // good key to try
+  ])
   t.alike(payload, { panda: 18 })
 })
 

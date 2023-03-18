@@ -73,10 +73,25 @@ export async function createJWS({ payload, signers }){
   return await proto.sign()
 }
 
-export async function verifyJWS(jws, publicKey){
-  const { payload, protectedHeader } = await jose.generalVerify(jws, publicKey)
-  // console.log({ protectedHeader })
-  return JSON.parse(payload)
+export async function verifyJWS(jws, publicKeys){
+  if (!Array.isArray(publicKeys)) publicKeys = [publicKeys]
+
+  let lastError, result
+  for (const publicKey of publicKeys){
+    try{
+      result = await jose.generalVerify(jws, publicKey)
+    }catch(error){
+      lastError = error
+    }
+  }
+  if (result){
+    const { payload, protectedHeader } = result
+    return JSON.parse(payload)
+  }
+  if (lastError) throw lastError
+  // const { payload, protectedHeader } = await jose.generalVerify(jws, publicKey)
+  // // console.log({ protectedHeader })
+  // return JSON.parse(payload)
 }
 
 export async function createJWE({ payload, recipients }){
