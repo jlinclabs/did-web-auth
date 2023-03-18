@@ -107,11 +107,14 @@ routes.post('/signup', async (req, res, next) => {
   let user
   try{
     user = await db.createUser({
-      did: `did:web:${req.app.host}:u:${username}`,
       username,
       password,
-      name,
-      avatarURL,
+      did: `did:web:${req.app.host}:u:${username}`,
+      profile: {
+        name,
+        avatarURL,
+        // bio
+      },
     })
   }catch(error){
     console.log({ error })

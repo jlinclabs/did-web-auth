@@ -15,6 +15,20 @@ const knex = Knex({
     filename: process.env.DATABASE_FILE || ':memory:'
   },
   asyncStackTraces: true,
+  log: {
+    warn(message) {
+      console.warn('KNEX Warning:', message);
+    },
+    error(message) {
+      console.error('KNEX Error:', message);
+    },
+    deprecate(message) {
+      console.log('KNEX Deprecation warning:', message);
+    },
+    debug(message) {
+      console.log('KNEX Debug:', message);
+    }
+  }
 })
 export { knex }
 await knex.migrate.latest()
@@ -64,30 +78,32 @@ const db = {
   },
 
   async createUser({
-    username, password, did,
-    profileURL, name, avatarURL, bio
+    username, password, did, profileURL, profile
   }){
     const signingKeyPair = await generateSigningKeyPair()
     const signingJWK = await keyPairToPrivateJWK(signingKeyPair)
     const encryptingJWK = await keyPairToPrivateJWK(await generateEncryptingKeyPair())
     const usersRecord = { username, did }
     if (password) usersRecord.password_hash = await bcrypt.hash(password, 10)
+    if (profileURL) usersRecord.profile_url = profileURL
     let profileRecord
-    if (profileURL){
-      usersRecord.profile_url = profileURL
-    }else{
+    if (profile){
       profileRecord = {}
-      if (name) profileRecord.name = name
-      if (avatarURL) profileRecord.avatar_url = avatarURL
-      // if (bio) profileRecord.bio = bio
+      if (profile.name) profileRecord.name = profile.name
+      if (profile.avatarURL) profileRecord.avatar_url = profile.avatarURL
+      if (profile.bio) profileRecord.bio = profile.bio
     }
     const userId = await this.knex.transaction(async knex => {
-      const [{id: userId}] = await this.knex('users').insert(usersRecord).returning('id')
+
+      const [{id: userId}] = await knex('users').insert(usersRecord).returning('id')
+      console.log('created user', userId)
       if (profileRecord){
-        await this.knex('profiles').insert(profileRecord).returning()
+        profileRecord.user_id = userId
+        await knex('profiles').insert(profileRecord)
+        console.log('created users profile record', userId)
       }
 
-      await this.knex('crypto_keys').insert([
+      await knex('crypto_keys').insert([
         {
           user_id: userId,
           public_key: signingJWK.x,
@@ -114,7 +130,7 @@ const db = {
   async findUser({
     id,
     username,
-    select = [ 'id', 'username', 'created_at' ],
+    select = [ 'id', 'username', 'created_at', 'profile_url' ],
     includePasswordHash = false,
     includeCryptoKeys = true,
   }){
@@ -122,15 +138,16 @@ const db = {
     const where = {}
     if (id) where.id = id
     if (username) where.username = username
-    const user = await this.knex
-      .select(select)
-      .from('users')
-      .where(where)
-      .leftJoin('profiles', 'users.id', 'profiles.user_id')
-      .first()
-      .then(userRecordToUser)
-
+    const user = await this.knex('users').select(select).where(where).first()
     if (!user) return
+
+    const profile = await this.knex('profiles')
+      .select(['name', 'avatar_url', 'bio'])
+      .where({ user_id: user.id }).first()
+    console.log({ profile })
+    if (profile) user.profile = profile
+    if (!profile && user.profile_url) await fetchProfile(user.profile_url)
+
     if (includeCryptoKeys){
       const crypto_keys = await this.knex('crypto_keys').select('*').where({ user_id: user.id })
       for (const type of ['signing', 'encrypting']){
@@ -165,18 +182,6 @@ const db = {
 
 export default db
 
-
-async function userRecordToUser(record){
-  if (!record) return
-  const user = {...record}
-  console.log({ user })
-  deserializeKeyPairs(user, 'signing_jwk')
-  deserializeKeyPairs(user, 'encrypting_jwk')
-  // if (user.signing_jwk) user.signing_jwk = await keyPairFromJWK(user.signing_jwk)
-  // if (user.encrypting_jwk) user.encrypting_jwk = await keyPairFromJWK(user.encrypting_jwk)
-  console.log({ user })
-  return user
-}
 
 async function deserializeKeyPairs(user, prop){
   user[prop] &&= await keyPairFromJWK(JSON.parse(user[prop]))
