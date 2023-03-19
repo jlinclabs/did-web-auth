@@ -498,12 +498,9 @@ routes.get('/login/from/:host', async (req, res, next) => {
 
   const authProviderDID = `did:web:${host}`
   const authProviderDIDDocument = await resolveDIDDocument(authProviderDID)
-  console.log({ authProviderDIDDocument }, authProviderDIDDocument.verificationMethod)
   const authProviderSigningKeys = await getSigningKeysFromDIDDocument(authProviderDIDDocument)
   const jwtData = await verifySignedJWT(jwt, authProviderSigningKeys)
-  console.log({ jwtData })
   const userDID = jwtData.sub
-  const didParts = praseDIDWeb(userDID)
   /**
    *  we need to make sure that one of the users singing keys
    *  has signed something we gave them before this point
@@ -512,7 +509,6 @@ routes.get('/login/from/:host', async (req, res, next) => {
    **/
   const user = await db.findOrCreateRemoteUser({
     did: userDID,
-    username: `${didParts.username}@${didParts.host}`,
     profileURL: jwtData.profileURL,
   })
   await req.login(user.id)
