@@ -455,10 +455,7 @@ routes.post('/login/to', async (req, res, next) => {
   const userDID = `did:web:${req.app.host}:u:${req.user.username}`
   console.log({ userDID })
 
-  if (accept === '1') {
-    // create a signed JWT as the new issues auth token
-    console.log('🔺 SIGNGING WITH', await keyPairToPublicJWK(req.app.signingKeyPair))
-
+  if (accept) {
     const jwt = await createSignedJWT({
       privateKey: req.app.signingKeyPair.privateKey,
       payload: {
@@ -507,8 +504,6 @@ routes.get('/login/from/:host', async (req, res, next) => {
   console.log({ jwtData })
   const userDID = jwtData.sub
   const didParts = praseDIDWeb(userDID)
-  // TODO find and update existing user
-
   /**
    *  we need to make sure that one of the users singing keys
    *  has signed something we gave them before this point
@@ -527,9 +522,7 @@ routes.get('/login/from/:host', async (req, res, next) => {
 
 /**
  * user profile as json route
- */
-
-
+ **/
 routes.get('/@:username/profile.json', async (req, res, next) => {
   const { username } = req.params
   const user = await db.getUserByUsername(username)
@@ -547,9 +540,9 @@ routes.get('/@:username/profile.json', async (req, res, next) => {
 
 
 
-/*
-signout callback
-*/
+/**
+ * sign out route
+ */
 routes.post('/signout', async (req, res, next) => {
   await req.logout()
   res.render('redirect', { to: '/' })
@@ -558,9 +551,13 @@ routes.post('/signout', async (req, res, next) => {
 
 
 /*
-profile
-GET /u/alice
-*/
+ * user did document route
+ *
+ * GET /u/alice/did.json
+ *
+ * This is an auth provider endpoint
+ *
+ **/
 routes.get('/u/:username/did.json', async (req, res, next) => {
   const { username } = req.params
   console.log({ username })
@@ -642,24 +639,3 @@ routes.get('/debug', async (req, res, next) => {
     }
   })
 })
-
-
-
-// -- helpers
-
-
-async function fetchJSON(url, options = {}){
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-      ...options.headers
-    },
-    body: options.body
-      ? JSON.stringify(options.body)
-      : undefined,
-  })
-  return await response.json()
-}
-
