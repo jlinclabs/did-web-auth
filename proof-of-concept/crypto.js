@@ -1,6 +1,5 @@
 import crypto from 'crypto'
 import * as jose from 'jose'
-import { base58btc } from 'multiformats/bases/base58'
 import { base64url } from 'multiformats/bases/base64' // replace with jose.base64url
 
 const PublicKeyObject = crypto.generateKeyPairSync('ed25519').publicKey.constructor
@@ -23,10 +22,10 @@ export async function generateEncryptingKeyPair(){
 export async function publicKeyToJWK(publicKey){
   return await jose.exportJWK(publicKey)
 }
-export async function keyPairToPublicJWK({ publicKey, privateKey }){
+export async function keyPairToPublicJWK({ publicKey }){
   return await publicKeyToJWK(publicKey)
 }
-export async function keyPairToPrivateJWK({ publicKey, privateKey }){
+export async function keyPairToPrivateJWK({ privateKey }){
   return await jose.exportJWK(privateKey)
 }
 export function publicKeyFromJWK(publicJWK){
@@ -88,7 +87,7 @@ export async function verifyJWS(jws, publicKeys){
     }
   }
   if (result){
-    const { payload, protectedHeader } = result
+    const { payload } = result
     return JSON.parse(payload)
   }
   if (lastError) throw lastError
@@ -107,7 +106,7 @@ export async function createJWE({ payload, recipients }){
 }
 
 export async function verifyJWE(jwe, privateKey){
-  const { plaintext, protectedHeader, additionalAuthenticatedData } = await jose.generalDecrypt(jwe, privateKey)
+  const { plaintext } = await jose.generalDecrypt(jwe, privateKey)
   // console.log({ protectedHeader, additionalAuthenticatedData })
   return JSON.parse(plaintext)
 }
@@ -146,7 +145,7 @@ export async function verifySignedJWT(jwt, publicKeys){
     }
   }
   if (result){
-    const { payload, protectedHeader } = result
+    const { payload } = result
     return payload
   }
   if (lastError) throw lastError
@@ -181,23 +180,16 @@ export async function decryptSignedJWT({
 }){
   secret = truncateSecret(secret)
   const options = { issuer, audience }
-  const { payload, protectedHeader } = await jose.jwtDecrypt(jwt, secret, options)
+  const { payload } = await jose.jwtDecrypt(jwt, secret, options)
   if (payload.signedJWT){
     const {
       payload: innerPayload,
-      protectedHeader: innerProtectedHeader,
+      // protectedHeader: innerProtectedHeader,
     } = await jose.jwtVerify(payload.signedJWT, publicKey)
     delete payload.signedJWT
     Object.assign(payload, innerPayload)
   }
   return payload
-}
-
-export function publicKeyToBase58(publicKey){
-  return base58btc.encode(publicKeyToBuffer(publicKey))
-}
-export function publicKeyFromBase58(publicKey){
-  return publicKeyFromBuffer(base58btc.decode(publicKey))
 }
 
 /**

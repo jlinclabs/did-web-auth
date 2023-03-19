@@ -2,7 +2,6 @@ import Router from 'express-promise-router'
 import expressSession from 'express-session'
 import KnexSessionStore from 'connect-session-knex'
 import db, { knex } from './db.js'
-import app from './app.js'
 
 const SessionStore = KnexSessionStore(expressSession)
 const sessionStore = new SessionStore({

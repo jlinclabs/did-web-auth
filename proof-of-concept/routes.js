@@ -1,4 +1,3 @@
-import { promisify } from 'util'
 import { URL } from 'url'
 import Router from 'express-promise-router'
 
@@ -27,11 +26,9 @@ routes.use(async (req, res, next) => {
     url: req.url,
     query: req.query,
     params: req.params,
-    user: req.user,
-    session: req.session,
+    // session: req.session,
     userId: req.userId,
     user: req.user,
-    // locals: res.locals,
   })
   next()
 })
@@ -182,7 +179,7 @@ routes.post('/signin', async (req, res, next) => {
       let redirectUrl = await loginWithDIDWebAuth({
         ourHostDID: req.app.did,
         ourHostSigningKeyPair: req.app.signingKeyPair,
-        ourHostEncryptingKeyPair: req.app.encryptingKeyPair,
+        // ourHostEncryptingKeyPair: req.app.encryptingKeyPair,
         username: emailUsername,
         authProviderHost: emailHost,
       })
@@ -216,7 +213,8 @@ routes.post('/signin', async (req, res, next) => {
  * Code like this might be wrapped in a shared library
  */
 async function loginWithDIDWebAuth({
-  ourHostDID, ourHostSigningKeyPair, ourHostEncryptingKeyPair,
+  ourHostDID, ourHostSigningKeyPair,
+  // ourHostEncryptingKeyPair,
   username, authProviderHost,
 }){
   const authProviderDID = `did:web:${authProviderHost}`
@@ -229,7 +227,7 @@ async function loginWithDIDWebAuth({
 
   const userDIDDocument = await resolveDIDDocument(userDID)
   if (!userDIDDocument) {
-    throw new Error(`failed to fetch signin did document at ${userDIDDocumentUrl}`)
+    throw new Error(`failed to fetch signin did document for "${userDID}"`)
   }
   console.log({ userDIDDocument })
   // search the userDIDDocument for an auth service endpoint
@@ -240,7 +238,7 @@ async function loginWithDIDWebAuth({
     )
 
   if (didWebAuthServices.length === 0){
-    throw new Error(`invalid did document for signin at ${userDIDDocumentUrl}. no valid service listed`)
+    throw new Error(`no valid service found in did document for ${userDID}`)
   }
   const didWebAuthService = didWebAuthServices[0] // for now just try the first matching endpoint
   const url = didWebAuthService.serviceEndpoint
@@ -335,7 +333,7 @@ routes.post('/auth/did', async (req, res, next) => {
   // extract the signing keys from the did document
   const senderSigningKeys = await getSigningKeysFromDIDDocument(destinationDIDDocument)
   const data = await verifyJWS(incomingJWS, senderSigningKeys)
-  const { userDID, now, requestId } = data
+  const { userDID, /*now,*/ requestId } = data
   // TODO check now to see if its too old
 
   console.log({ destinationDID })
@@ -344,6 +342,9 @@ routes.post('/auth/did', async (req, res, next) => {
     return res.status(404).json({ error: 'user not found' })
   }
   const user = await db.getUserByUsername(userDIDParts.username)
+  if (!user){
+    return res.status(404).json({ error: 'user not found' })
+  }
   // TODO check that the useDID actually maps to a user in this app
 
   // const senderEncryptionKeys = await getEncryptionKeysFromDIDDocument(destinationDIDDocument)
@@ -395,7 +396,7 @@ routes.get('/login/to/:host', async (req, res, next) => {
   if (typeof userDID !== 'string' || !userDID) {
     return res.status(400).json({ error: `userDID is required` })
   }
-  const returnTo = req.query.returnTo || `https://${host}`
+  const returnTo = req.query.returnTo || `https://${destinationHost}/`
 
   let didHost, username
   {

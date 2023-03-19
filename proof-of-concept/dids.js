@@ -1,9 +1,6 @@
-import fetch from 'node-fetch'
 import { Resolver } from 'did-resolver'
 import * as KeyResolver from 'key-did-resolver'
 import * as WebResolver from 'web-did-resolver'
-import { Ed25519Provider } from 'key-did-provider-ed25519'
-import { DID } from 'dids'
 import { publicKeyFromJWK } from './crypto.js'
 
 const resolver = new Resolver({
@@ -34,7 +31,7 @@ export function didToDidDocumentURL(did){
 export async function resolveDIDDocument(did){
   const {
     didDocument,
-    didDocumentMetadata,
+    // didDocumentMetadata,
     didResolutionMetadata,
   } = await resolver.resolve(did)
   if (didResolutionMetadata?.error){

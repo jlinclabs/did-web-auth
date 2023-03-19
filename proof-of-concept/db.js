@@ -6,7 +6,6 @@ import {
   generateEncryptingKeyPair,
   keyPairToPrivateJWK,
   keyPairFromJWK,
-  publicKeyToBase58,
 } from './crypto.js'
 import { praseDIDWeb } from './dids.js';
 
@@ -125,7 +124,7 @@ const db = {
   async findOrCreateRemoteUser({ did, profileURL }){
     const user = await this.getUserByDID(did)
     if (user) return user
-    const didParts = praseDIDWeb(userDID)
+    const didParts = praseDIDWeb(did)
     const username = `${didParts.username}@${didParts.host}`
     return await this.createUser({ did, username, profileURL })
   },

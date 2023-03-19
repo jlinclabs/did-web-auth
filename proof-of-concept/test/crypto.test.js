@@ -17,8 +17,6 @@ import {
   verifySignedJWT,
   createEncryptedSignedJWT,
   decryptSignedJWT,
-  publicKeyToBase58,
-  publicKeyFromBase58,
   createDiffieHellman,
   acceptDiffieHellman,
   finalizeDiffieHellman,
@@ -49,13 +47,13 @@ test('serializing signing keypair', async t => {
   // const publicKeyFromJWK = await publicKeyFromJWK(skp1.publicKey)
   t.ok(isSamePublicKeyObject(skp1.publicKey, skp1Copy.publicKey))
   t.ok(isSamePrivateKeyObject(skp1Copy.privateKey, skp1.privateKey))
-  t.ok(isSamePublicKeyObject(skp1.publicKey, publicKeyFromBase58(publicKeyToBase58(skp1.publicKey))))
+  // t.ok(isSamePublicKeyObject(skp1.publicKey, publicKeyFromBase58(publicKeyToBase58(skp1.publicKey))))
   t.ok(isSamePublicKeyObject(skp1.publicKey, await publicKeyFromJWK(publicKeyAsJWK)))
 })
 
-test('JWKs', async t => {
-
-})
+// TODO more tests about JWKs
+// test('JWKs', async t => {
+// })
 
 test('JWSs', async t => {
   const skp1 = await generateSigningKeyPair()
@@ -94,7 +92,7 @@ test('serializing encrypting keypair', async t => {
   )
   t.ok(isSamePublicKeyObject(ekp1.publicKey, ekp1Copy.publicKey))
   t.ok(isSamePrivateKeyObject(ekp1Copy.privateKey, ekp1.privateKey))
-  t.ok(isSamePublicKeyObject(ekp1.publicKey, publicKeyFromBase58(publicKeyToBase58(ekp1.publicKey))))
+  // t.ok(isSamePublicKeyObject(ekp1.publicKey, publicKeyFromBase58(publicKeyToBase58(ekp1.publicKey))))
 })
 
 test('JWEs', async t => {
@@ -103,13 +101,17 @@ test('JWEs', async t => {
 
   const jwe1 = await createJWE({
     payload: { dont: 'tell', anyone: 'ok' },
-    recipients: [ekp2.publicKey],
+    recipients: [ekp1.publicKey],
   })
 
   t.alike(
-    await verifyJWE(jwe1, ekp2.privateKey),
+    await verifyJWE(jwe1, ekp1.privateKey),
     { dont: 'tell', anyone: 'ok' }
   )
+
+  await t.exception(async () => {
+    await verifyJWE(jwe1, ekp2.privateKey)
+  })
 })
 
 
@@ -117,7 +119,7 @@ test('Diffie Hellman', async t => {
   /** AS ALICE **/
   const {
     actor: alice,
-    publicKey: alicePublicKey,
+    // publicKey: alicePublicKey,
     message: message1,
   } = createDiffieHellman()
   // Alice sends the message to Bob
@@ -125,8 +127,8 @@ test('Diffie Hellman', async t => {
 
   /** AS BOB **/
   const {
-    actor: bob,
-    publicKey: bobPublicKey,
+    // actor: bob,
+    // publicKey: bobPublicKey,
     secret: bobSecret,
     message: message2,
   } = await acceptDiffieHellman(message1Copy)

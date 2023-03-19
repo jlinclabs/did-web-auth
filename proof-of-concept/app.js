@@ -2,7 +2,6 @@ import express from 'express'
 import bodyParser from 'body-parser'
 import { create } from 'express-handlebars'
 import toColor from '@mapbox/to-color'
-import Color from 'color'
 import chroma from 'chroma-js'
 
 import { publicKeyToBuffer } from './crypto.js'
