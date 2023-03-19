@@ -54,6 +54,13 @@
       placeholder="https://example.com/cat.jpeg"
       value=avatarURL
     }}
+    {{> formInput
+      label="Bio"
+      id="bio-input"
+      name="bio"
+      type="multiline"
+      value=user.bio
+    }}
   </div>
   <div class="flex items-center justify-end">
     <button

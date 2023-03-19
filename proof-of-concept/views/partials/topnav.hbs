@@ -1,5 +1,8 @@
 <div style="background-color: {{app.color}};">
-  <div class="whitespace-nowrap h-20 p-2 grid gap-2 grid-cols-3 items-center mx-auto max-w-5xl">
+  <div
+    class="whitespace-nowrap h-20 p-2 grid gap-2 grid-cols-3 items-center mx-auto max-w-5xl min-w-5xl"
+    style="width: 64rem;"
+  >
     <a class="text-black text-xl" href="/">
       {{app.host}}
     </a>
@@ -11,10 +14,10 @@
         <div class="flex gap-2 items-center ">
           <div>
             {{#if user.avatar_url}}
-            <img
-              src="{{user.avatar_url}}"
-              class="w-10 rounded-full"
-            />
+            <div
+              class="w-10 h-10 rounded-full bg-no-repeat bg-cover"
+              style="background-image: url({{user.avatar_url}});"
+            ></div>
             {{/if}}
           </div>
           <div>

@@ -51,6 +51,35 @@
       {{/if}}
     </div>
   </div>
+
+
+  {{#if userIsRemote}}
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+  <script>
+    function makeConfetti(){
+      function randomInRange(min, max) {
+        return Math.random() * (max - min) + min;
+      }
+      requestAnimationFrame(function(){
+        confetti({
+          angle: 60, // randomInRange(55, 125),
+          spread: randomInRange(50, 70),
+          particleCount: randomInRange(50, 100),
+          origin: { x: 0, y: 1 }
+        })
+        confetti({
+          angle: 90, // randomInRange(55, 125),
+          spread: randomInRange(50, 70),
+          particleCount: randomInRange(50, 100),
+          origin: { x: 1, y: 1 }
+        })
+        setTimeout(makeConfetti, randomInRange(200, 1000))
+      })
+    }
+    makeConfetti()
+    // setInterval(makeConfetti, 500)
+  </script>
+  {{/if}}
 {{else}}
   <div style="display: flex; justify-content: space-around;">
     <div>
@@ -70,29 +99,3 @@
   </div>
 {{/if}}
 
-
-{{#unless userIsLocal}}
-<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
-<script>
-  function makeConfetti(){
-    function randomInRange(min, max) {
-      return Math.random() * (max - min) + min;
-    }
-    confetti({
-      angle: 60, // randomInRange(55, 125),
-      spread: randomInRange(50, 70),
-      particleCount: randomInRange(50, 100),
-      origin: { x: 0, y: 1 }
-    })
-    confetti({
-      angle: 90, // randomInRange(55, 125),
-      spread: randomInRange(50, 70),
-      particleCount: randomInRange(50, 100),
-      origin: { x: 1, y: 1 }
-    })
-    setTimeout(makeConfetti, randomInRange(200, 1000))
-  }
-  makeConfetti()
-  // setInterval(makeConfetti, 500)
-</script>
-{{/unless}}

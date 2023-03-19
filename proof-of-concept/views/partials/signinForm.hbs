@@ -2,6 +2,9 @@
   {{#if error}}
     <div class="mb-4 text-red-700">{{error}}</div>
   {{/if}}
+  {{#if returnTo}}
+    <input type="hidden" name="returnTo" value="{{returnTo}}"/>
+  {{/if}}
   {{> formInput
     label="Username"
     id="username-input"
@@ -22,8 +25,10 @@
       type="submit"
     >Sign In</button>
   </div>
+
 </form>
 
+{{#unless loginOnly}}
 <form action="/signin" method="post" class="mt-6">
   <h3 class="text-xl font-semibold">**Sign in from another site**</h3>
   <h3 class="">
@@ -51,3 +56,4 @@
     >Sign In</button>
   </div>
 </form>
+{{/unless}}

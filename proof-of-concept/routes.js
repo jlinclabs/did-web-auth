@@ -97,6 +97,7 @@ routes.post('/signup', async (req, res, next) => {
     passwordConfirmation,
     name,
     avatarURL,
+    bio,
   } = req.body
   const renderSignupPage = locals => {
     res.render('pages/signup', { username, ...locals })
@@ -113,7 +114,7 @@ routes.post('/signup', async (req, res, next) => {
       profile: {
         name,
         avatarURL,
-        // bio
+        bio,
       },
     })
   }catch(error){
@@ -145,7 +146,7 @@ routes.post('/signup', async (req, res, next) => {
  * new DID Web Auth endpoint.
  */
 routes.post('/signin', async (req, res, next) => {
-  let { username, password, email } = req.body
+  let { username, password, email, returnTo = '/' } = req.body
   console.log('/signin', { username, password, email })
 
   let emailUsername, emailHost
@@ -170,7 +171,7 @@ routes.post('/signin', async (req, res, next) => {
     const user = await db.authenticateUser({username, password})
     if (user){ // success
       await req.login(user.id)
-      return res.render('redirect', { to: '/' })
+      return res.render('redirect', { to: returnTo })
     }else{
       return renderSigninPage({
         error: 'invalid email or password'
@@ -417,13 +418,24 @@ routes.get('/login/to/:host', async (req, res, next) => {
   // if we dont find a matching user
   if (!user) {
     // render an error
-    return res.status(400).json({ error: `userDID "${userDID}" is not hosted here` })
+    return res.status(400).render('pages/error', {
+      title: 'User not found',
+      message: `userDID "${userDID}" is not hosted here`
+    })
   }
 
   // if we're logged as a different user
   if (req.userId && req.userId !== user.id){
     // render an error
-    return res.status(400).json({ error: `userDID "${userDID}" is not hosted here` })
+    // return res.status(400).json({ error: `you are not logged in as "${userDID}". Pleas` })
+    return res.status(400).render('pages/error', {
+      title: 'ERROR: Wrong user',
+      message: (
+        `You are trying to login to "${destinationHost}" as @${user.username} but ` +
+        `you are currently logged in as @${req.user.username}.\n\n` +
+        `If you own @${user.username}, please login and login as them first.`
+      )
+    })
   }
 
   res.render('pages/signInToAnotherApp', { destinationHost, returnTo })
@@ -545,13 +557,6 @@ routes.post('/signout', async (req, res, next) => {
   await req.logout()
   res.render('redirect', { to: '/' })
 })
-/*
-signin callback
-*/
-routes.get('/', async (req, res, next) => {
-
-  res.redirect('/')
-})
 
 
 
@@ -609,13 +614,16 @@ routes.get('/u/:username/did.json', async (req, res, next) => {
   })
 })
 
-/*
-profile
-GET /u/alice
-*/
-routes.get('/u/:identifier', async (req, res, next) => {
 
-  res.render('pages/profile')
+
+/**
+ * update profile route
+ */
+routes.post('/profile', async (req, res, next) => {
+  if (!req.user) return res.status(401).json({ error: 'unauthorized' })
+  const { name, avatarURL, bio } = req.body
+  await db.updateUserProfile({ userId: req.user.id, name, avatarURL, bio })
+  res.render('redirect', { to: '/' })
 })
 
 

@@ -3,15 +3,6 @@
     <div class="mb-4 text-red-700">{{error}}</div>
   {{/if}}
   {{> formInput
-    label="Username"
-    id="username-input"
-    name="username"
-    type="text"
-    value=user.username
-    readOnly=1
-    disabled=1
-  }}
-  {{> formInput
     label="Real Name"
     id="name-input"
     name="name"
@@ -24,6 +15,13 @@
     name="avatarURL"
     type="text"
     value=user.avatar_url
+  }}
+  {{> formInput
+    label="Bio"
+    id="bio-input"
+    name="bio"
+    type="multiline"
+    value=user.bio
   }}
   <div class="flex items-center justify-end">
     <button

@@ -30,15 +30,17 @@ const sessionRoutes = new Router
 sessionRoutes.use(sessionMiddleware)
 
 sessionRoutes.use(async (req, res, next) => {
+  res.locals.requestURL = req.url
   req.userId = req.session.userId
   req.user = req.userId
     ? await db.getUserById(req.userId)
     : undefined
   res.locals.userId = req.userId
   res.locals.user = req.user
-  res.locals.userIsLocal = req.user
-    ? req.user.authentication_host === req.app.host
-    : null
+  if (req.user) {
+    res.locals.userIsLocal = req.user.authentication_host === req.app.host
+    res.locals.userIsRemote = !res.locals.userIsLocal
+  }
 
   req.login = async (userId) => {
     await new Promise((resolve, reject) => {

@@ -150,11 +150,12 @@ const db = {
     let profile = await this.knex('profiles')
       .select(['name', 'avatar_url', 'bio'])
       .where({ user_id: user.id }).first()
-    console.log({ profile })
+
     if (!profile && user.profile_url) {
       profile = await fetchProfile(user.profile_url)
       console.log('fetched remote profile', {userId: user.id, profile})
     }
+    console.log({ profile })
     if (profile) {
       user.name = profile.name
       user.avatar_url = profile.avatar_url
@@ -194,7 +195,15 @@ const db = {
     if (!record) return
     const match = await bcrypt.compare(password, record.password_hash);
     if (match) return await this.getUserById(record.id)
-  }
+  },
+
+  async updateUserProfile({userId, name, avatarURL, bio}){
+    const updates = {}
+    if (name) updates.name = name
+    if (avatarURL) updates.avatar_url = avatarURL
+    if (bio) updates.bio = bio
+    await knex('profiles').update(updates).where({ user_id: userId })
+  },
 }
 
 

@@ -11,66 +11,71 @@
       <span class="font-semibold">{{host}}</span>
       account.
     </h1>
-    <h1 class="my-4">
-      Would you like to login to
-      <span class="font-semibold">{{destinationHost}}</span>
-      with your
-      <span class="font-semibold">
-        {{usernameToEmail user.username}}
-      </span>
-      account?
-    </h1>
-    <div class="my-6">
-      <form action="/login/to" method="POST">
-        {{!-- TODO ensure no cross-domain posts with a CSRF variable --}}
-        <input type="hidden" name="destinationHost" value="{{destinationHost}}"/>
-        <input type="hidden" name="returnTo" value="{{returnTo}}"/>
+
+    {{#if user}}
+      <h1 class="my-4">
+        Would you like to login to
+        <span class="font-semibold">{{destinationHost}}</span>
+        with your
+        <span class="font-semibold">
+          {{usernameToEmail user.username}}
+        </span>
+        account?
+      </h1>
+      <div class="my-6">
+        <form action="/login/to" method="POST">
+          {{!-- TODO ensure no cross-domain posts with a CSRF variable --}}
+          <input type="hidden" name="destinationHost" value="{{destinationHost}}"/>
+          <input type="hidden" name="returnTo" value="{{returnTo}}"/>
 
 
 
-        <div class="my-4">
-          <label class="text-gray-700 text-sm font-bold mb-2" for="expires-input">
-            Expires in:
-          </label>
-          <input
-            class="shadow appearance-none border rounded mr-2 py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-            style="max-width: 5rem;"
-            type="number" name="duration" value="1" id="expires-input"
-          />
-          <select
-            class="bg-transparent shadow border rounded mr-2 py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-            name="durationUnit"
-          >
-            <option value="m">Minutes</option>
-            <option value="h" selected="selected">Hours</option>
-            <option value="d">Days</option>
-            <option value="w">Weeks</option>
-          </select>
-        </div>
+          <div class="my-4">
+            <label class="text-gray-700 text-sm font-bold mb-2" for="expires-input">
+              Expires in:
+            </label>
+            <input
+              class="shadow appearance-none border rounded mr-2 py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              style="max-width: 5rem;"
+              type="number" name="duration" value="1" id="expires-input"
+            />
+            <select
+              class="bg-transparent shadow border rounded mr-2 py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              name="durationUnit"
+            >
+              <option value="m">Minutes</option>
+              <option value="h" selected="selected">Hours</option>
+              <option value="d">Days</option>
+              <option value="w">Weeks</option>
+            </select>
+          </div>
 
-        <div class="flex gap-4 mt-6">
-          <button
-            class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-            type="submit"
-            name="accept"
-            value="0"
-          >Reject</button>
+          <div class="flex gap-4 mt-6">
+            <button
+              class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+              type="submit"
+              name="accept"
+              value="0"
+            >Reject</button>
 
-          <button
-            class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-            type="submit"
-            name="accept"
-            value="1"
-          >Accept</button>
-        </div>
-      </form>
-    </div>
-    <hr/>
-    <div class="mt-2 text-sm text-center">
-      <div class="mb-1">Clicking Accept or Reject will take you back to</div>
-      <div>{{returnTo}}</div>
-    </div>
-
+            <button
+              class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+              type="submit"
+              name="accept"
+              value="1"
+            >Accept</button>
+          </div>
+        </form>
+      </div>
+      <hr/>
+      <div class="mt-2 text-sm text-center">
+        <div class="mb-1">Clicking Accept or Reject will take you back to</div>
+        <div>{{returnTo}}</div>
+      </div>
+    {{else}}
+      <h3>You are not currently logged in</h3>
+      {{> signinForm loginOnly=true returnTo=requestURL}}
+    {{/if}}
 
   </div>
 </div>

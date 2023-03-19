@@ -19,6 +19,7 @@ const hbs = create({
     toJSON: object => JSON.stringify(object, null, 2),
     equals: (a, b) => a === b,
     usernameToEmail: username => {
+      if (!username) throw new Error(`username is required`)
       if (username.includes('@')) return username
       return `${username}@${app.get('host')}`.trim()
     },
