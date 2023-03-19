@@ -4,7 +4,6 @@ import {
   generateEncryptingKeyPair,
   keyPairToPublicJWK,
   PublicKeyObject,
-  PrivateKeyObject,
 } from '../crypto.js'
 import {
   praseDIDWeb,
