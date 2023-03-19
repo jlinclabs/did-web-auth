@@ -53,16 +53,12 @@ app.start = async function start(){
   app.host = host
   app.origin = `https://${host}`
   app.did = `did:web:${host}`
-  console.log('APP DID', app.did)
 
   const cryptoKeyPairs = await db.getOrCreateAppCryptoKeyPairs()
   app.signingKeyPair = cryptoKeyPairs.signingKeyPairs[0]
   app.encryptingKeyPair = cryptoKeyPairs.encryptingKeyPairs[0]
-  console.log('APP signing public key', publicKeyToBuffer(app.signingKeyPair.publicKey).toString('base64url'))
-  console.log('APP encrypting public key', publicKeyToBuffer(app.encryptingKeyPair.publicKey).toString('base64url'))
 
   const appColor = new toColor(`${host}:${port}${port}${port}`).getColor().hsl.formatted
-  // const color = chroma(appColor).lighten()
 
   app.locals.app = {
     host: app.host,
@@ -71,11 +67,10 @@ app.start = async function start(){
     color: chroma(appColor).hex(),
     colorLight: chroma(appColor).brighten(3).alpha(0.25).hex(),
     colorDark: chroma(appColor).darken(3).alpha(0.4).hex(),
-    // colorTrans: color.alpha(0.5).hsl().string(),
-    // // complement: color.complement().alpha(0.5).hsl().string(),
-    // xxx: color.contrast(Color("blue")).a∂.hsl().string(),
   }
-  console.log(  app.locals.app)
+  console.log('APP DID', app.did)
+  console.log('APP signing public key', publicKeyToBuffer(app.signingKeyPair.publicKey).toString('base64url'))
+  console.log('APP encrypting public key', publicKeyToBuffer(app.encryptingKeyPair.publicKey).toString('base64url'))
 
   return new Promise((resolve, reject) => {
     app.server = app.listen(port, error => {
