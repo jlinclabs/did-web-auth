@@ -34,6 +34,7 @@
   "devDependencies": {
     "brittle": "^3.2.1",
     "child-process-promise": "^2.2.1",
+    "eslint": "^8.36.0",
     "node-puma-dev": "^0.0.1",
     "nodemon": "^2.0.21"
   }
