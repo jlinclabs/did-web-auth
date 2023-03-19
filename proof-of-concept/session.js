@@ -2,6 +2,7 @@ import Router from 'express-promise-router'
 import expressSession from 'express-session'
 import KnexSessionStore from 'connect-session-knex'
 import db, { knex } from './db.js'
+import app from './app.js'
 
 const SessionStore = KnexSessionStore(expressSession)
 const sessionStore = new SessionStore({
@@ -35,6 +36,9 @@ sessionRoutes.use(async (req, res, next) => {
     : undefined
   res.locals.userId = req.userId
   res.locals.user = req.user
+  res.locals.userIsLocal = req.user
+    ? req.user.authentication_host === req.app.host
+    : null
 
   req.login = async (userId) => {
     await new Promise((resolve, reject) => {

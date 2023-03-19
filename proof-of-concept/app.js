@@ -4,6 +4,7 @@ import { create } from 'express-handlebars'
 import toColor from '@mapbox/to-color'
 
 import { publicKeyToBuffer } from './crypto.js'
+import { didToDidDocumentURL }from './dids.js'
 import db from './db.js'
 import { sessionRoutes } from './session.js'
 import routes from './routes.js'
@@ -16,10 +17,12 @@ const hbs = create({
   partialsDir: './views/partials/',
   helpers: {
     toJSON: object => JSON.stringify(object, null, 2),
+    equals: (a, b) => a === b,
     usernameToEmail: username => {
       if (username.includes('@')) return username
       return `${username}@${app.get('host')}`.trim()
-    }
+    },
+    didToDidDocumentURL
   }
 })
 
@@ -43,9 +46,6 @@ app.use(routes)
 app.start = async function start(){
   const port = app.get('port')
   const host = app.get('host')
-  // app.set('appColor', appColor)
-  app.locals.host = host
-  app.locals.port = port
 
   app.host = host
   app.origin = `https://${host}`
@@ -59,7 +59,12 @@ app.start = async function start(){
   console.log('APP encrypting public key', publicKeyToBuffer(app.encryptingKeyPair.publicKey).toString('base64url'))
 
   const appColor = new toColor(`${host}:${port}${port}${port}`).getColor().hsl.formatted
-  app.locals.appColor = appColor
+  app.locals.app = {
+    host: app.host,
+    origin: app.origin,
+    did: app.did,
+    color: appColor
+  }
 
   return new Promise((resolve, reject) => {
     app.server = app.listen(port, error => {

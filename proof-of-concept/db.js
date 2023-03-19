@@ -8,6 +8,7 @@ import {
   keyPairFromJWK,
   publicKeyToBase58,
 } from './crypto.js'
+import { praseDIDWeb } from './dids.js';
 
 const knex = Knex({
   client: 'better-sqlite3',
@@ -169,6 +170,7 @@ const db = {
         user[`${type}_key_pair`] = keyPair
       }
     }
+    user.authentication_host = praseDIDWeb(user.did).host
     console.log({ user })
     return user
   },

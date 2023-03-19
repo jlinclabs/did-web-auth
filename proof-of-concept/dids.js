@@ -21,6 +21,16 @@ export function praseDIDWeb(did){
   return parts
 }
 
+export function didToDidDocumentURL(did){
+  const [_did, method, host, ...path] = did.split(':')
+  if (_did !== 'did' && method !== 'web')
+    throw new Error(`unsupported did method "${did}"`)
+
+  const url = `https://${host}/${path.join('/')}/did.json`
+  console.log({url})
+  return url
+}
+
 export async function resolveDIDDocument(did){
   const {
     didDocument,
