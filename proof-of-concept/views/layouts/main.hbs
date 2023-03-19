@@ -6,7 +6,12 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <meta name="description" content="DID Auth POC" />
     <title>DID Auth POC</title>
-    <link href="/index.css" rel="stylesheet">
+    <style>
+      body{
+        background: radial-gradient(circle at left bottom, {{app.colorLight}}, {{app.colorDark}}),
+                    radial-gradient(circle at right bottom, {{app.colorLight}}, {{app.colorDark}});
+      }
+    </style>
   </head>
   <body class="font-sans min-h-screen">
     <div class="min-h-screen flex flex-col">
@@ -15,8 +20,7 @@
         {{{body}}}
       </main>
       <footer class="mt-auto justify-self-center p-4">
-        Written by Jared Grippe ©2023 |
-        <a href="/debug">debug</a>
+        Written by Jared Grippe | ©2023 Jlinc Labs | <a href="/debug">debug</a>
       </footer>
     </div>
   </body>

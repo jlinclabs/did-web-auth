@@ -159,10 +159,7 @@ routes.post('/signin', async (req, res, next) => {
   }
 
   const renderSigninPage = locals => {
-    res.render('pages/signin', {
-      email,
-      ...locals
-    })
+    res.render('pages/signin', { email, returnTo, ...locals })
   }
   /**
    * NORMAL LOGIN

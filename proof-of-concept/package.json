@@ -13,6 +13,8 @@
     "bcrypt": "^5.1.0",
     "better-sqlite3": "^8.2.0",
     "body-parser": "^1.20.2",
+    "chroma-js": "^2.4.2",
+    "color": "^4.2.3",
     "connect-session-knex": "^3.0.1",
     "did-resolver": "^4.1.0",
     "dids": "^4.0.0",
