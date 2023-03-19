@@ -23,7 +23,10 @@ export function didToDidDocumentURL(did){
   if (_did !== 'did' && method !== 'web')
     throw new Error(`unsupported did method "${did}"`)
 
-  const url = `https://${host}/${path.join('/')}/did.json`
+  let url = `https://${host}`
+  url += path.length === 0
+    ? `/.well-known/did.json`
+    : `/${path.join('/')}/did.json`
   console.log({url})
   return url
 }
