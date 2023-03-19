@@ -6,12 +6,8 @@ import db from './db.js'
 import {
   createNonce,
   keyPairToPublicJWK,
-  publicKeyFromJWK,
-  publicKeyToJWK,
   createJWS,
   verifyJWS,
-  createJWE,
-  verifyJWE,
   createSignedJWT,
   verifySignedJWT,
 } from './crypto.js'
@@ -19,9 +15,8 @@ import {
   praseDIDWeb,
   resolveDIDDocument,
   getSigningKeysFromDIDDocument,
-  getEncryptionKeysFromDIDDocument,
 } from './dids.js'
-// import { sessionStore } from './session.js'
+
 
 const routes = new Router
 export default routes
