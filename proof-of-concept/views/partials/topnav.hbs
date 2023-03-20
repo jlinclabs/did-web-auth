@@ -1,0 +1,34 @@
+<div style="background-color: {{app.color}};">
+  <div
+    class="whitespace-nowrap h-20 p-2 grid gap-2 grid-cols-3 items-center mx-auto max-w-5xl min-w-5xl"
+    style="width: 64rem;"
+  >
+    <a class="text-black text-xl" href="/">
+      {{app.host}}
+    </a>
+    <a class="justify-self-center text-2xl text-black" href="/">
+      DID Auth POC
+    </a>
+    <div class="justify-self-end">
+      {{#if user}}
+        <div class="flex gap-2 items-center ">
+          <div>
+            {{#if user.avatar_url}}
+            <div
+              class="w-10 h-10 rounded-full bg-no-repeat bg-cover bg-center"
+              style="background-image: url({{user.avatar_url}});"
+            ></div>
+            {{/if}}
+          </div>
+          <div>
+            <div class="text-gray-700 text-sm">{{user.name}}</div>
+            <div class="text-gray-700 text-sm font-bold">{{usernameToEmail user.username}}</div>
+          </div>
+          {{> signoutForm }}
+        </div>
+      {{else}}
+
+      {{/if}}
+    </div>
+  </div>
+</div>

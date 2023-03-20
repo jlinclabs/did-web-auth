@@ -1,0 +1,32 @@
+<form action="/profile" method="post">
+  {{#if error}}
+    <div class="mb-4 text-red-700">{{error}}</div>
+  {{/if}}
+  {{> formInput
+    label="Real Name"
+    id="name-input"
+    name="name"
+    type="text"
+    value=user.name
+  }}
+  {{> formInput
+    label="Avatar URL"
+    id="avatarURL-input"
+    name="avatarURL"
+    type="text"
+    value=user.avatar_url
+  }}
+  {{> formInput
+    label="Bio"
+    id="bio-input"
+    name="bio"
+    type="multiline"
+    value=user.bio
+  }}
+  <div class="flex items-center justify-end">
+    <button
+      class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+      type="submit"
+    >Update Profile</button>
+  </div>
+</form>
