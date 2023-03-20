@@ -242,9 +242,10 @@ routes.post('/signin', async (req, res, next) => {
        * here is where you can specify the callback url
        **/
       redirectUrl.searchParams.set('returnTo', `${req.app.origin}/login/from/${emailHost}`)
-      debug('redirecting to login via did-web', { redirectUrl })
+      debug(`redirecting to login via did-web ${redirectUrl}`)
       return res.redirect(redirectUrl)
     }catch(error){
+      console.error(error)
       debug('failed to login via DID Web with', email, 'error', error)
       loginWithDIDWebAuthError = error
     }
@@ -537,7 +538,7 @@ routes.post('/login/to', async (req, res, next) => {
 
 
 /**
- * complete DID Web Auth sign in
+ * Complete DID Web Auth sign in
  *
  * this is a client app route
  *

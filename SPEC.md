@@ -155,14 +155,7 @@ For more on this see
 
 see [Verifiable Credentials](https://www.w3.org/TR/vc-data-model/)
 
-### Authorization Grant Token
 
-A one-time use token used to grant Client an access token
-
-### Access Token
-
-A [JSON Web Token][jwt-spec] used to gain limited access to protected HTTP
-resources.
 
 
 
@@ -326,6 +319,25 @@ to either `accept` or `reject` the authentication request.
 
 Optionally the user can also be prompted to specify how long until her
 permission expires.
+
+
+
+
+## Client Applications
+
+### HTTP Endpoints
+
+Auth providers must respond to the following HTTP endpoints:
+
+| name                 | path                                           |
+|----------------------|------------------------------------------------|
+| Domain DID Doc       | /.well-known/did.json                          |
+| Domain DID Conf      | /.well-known/did-configuration.json            |
+| Sign in Completion   | [defined by the `returnTo` param send to ]
+
+
+
+------
 
 
 ### User DID Document
