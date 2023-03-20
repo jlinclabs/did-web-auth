@@ -1,30 +1,13 @@
 # The DID Web Authorization Framework
 
-## TODO
+## Status of this document
 
-  Update this spec to rename things given new understanding of how did documents
-  are used to resolve service endpoints.
+This is a work in progress
 
+### TODO
 
-  ```
-  redo the  `Auth Resolution Methods` part of this spec
-  ### Auth Resolution Methods
-  #### magic-link
-  #### secret-code
-  #### http-redirect
-  #### callback
-  ```
-
-
-- [ ] define the nessesary routes
+- [ ] update auth flow diagram
 - [ ] define error codes for JSON responses
-
-
-
-
-
-
-
 
 
 ## Abstract
