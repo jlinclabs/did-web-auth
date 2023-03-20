@@ -1,5 +1,8 @@
+import Debug from 'debug'
 import { URL } from 'url'
 import Router from 'express-promise-router'
+
+const debug = Debug('did-web-auth.routes')
 
 import db from './db.js'
 import {
@@ -21,11 +24,12 @@ const routes = new Router
 export default routes
 
 routes.use(async (req, res, next) => {
-  console.log('📥', {
+  debug({
     method: req.method,
     url: req.url,
     query: req.query,
     params: req.params,
+    body: req.body,
     // session: req.session,
     userId: req.userId,
     user: req.user,
@@ -39,9 +43,8 @@ routes.use(async (req, res, next) => {
  * This route is required but all parties
  */
 routes.get('/.well-known/did.json', async (req, res, next) => {
-  // const hostPublicKey = db.getHostPublicKey()
   const { signingKeyPair, encryptingKeyPair, host } = req.app
-  // console.log({ signingKeyPair, host })
+
   const did = `did:web:${host}`
   res.json({
     "@context": [
@@ -110,7 +113,7 @@ routes.post('/signup', async (req, res, next) => {
       },
     })
   }catch(error){
-    console.log({ error })
+    debug('signup error', { error })
     return renderSignupPage({
       error: `${error}`,
       username,
@@ -118,15 +121,8 @@ routes.post('/signup', async (req, res, next) => {
       avatarURL,
     })
   }
-  console.log({ user })
+  debug('signed up as', { user })
   await req.login(user.id)
-  // req.session.userId = user.id
-  // await new Promise((resolve, reject) => {
-  //   req.session.save((error) => {
-  //     if (error) reject(error); else resolve()
-  //   })
-  // })
-  // console.log('req.session 2', req.session)
   res.render('redirect', { to: '/' })
 })
 
@@ -139,7 +135,6 @@ routes.post('/signup', async (req, res, next) => {
  */
 routes.post('/signin', async (req, res, next) => {
   let { username, password, email, returnTo = '/' } = req.body
-  console.log('/signin', { username, password, email })
 
   let emailUsername, emailHost
   if (email){
@@ -150,19 +145,20 @@ routes.post('/signin', async (req, res, next) => {
     }
   }
 
-  const renderSigninPage = locals => {
+  const renderSignInPage = locals => {
     res.render('pages/signin', { email, returnTo, ...locals })
   }
   /**
    * NORMAL LOGIN
    */
   if (username && password){
+    debug('signin with', { username, password: !!password })
     const user = await db.authenticateUser({username, password})
     if (user){ // success
       await req.login(user.id)
       return res.render('redirect', { to: returnTo })
     }else{
-      return renderSigninPage({
+      return renderSignInPage({
         error: 'invalid email or password'
       })
     }
@@ -171,10 +167,7 @@ routes.post('/signin', async (req, res, next) => {
   if (email){
     // you could lookup a user by this email at this point
     let loginWithDIDWebAuthError
-    console.log('attempting DID Web Auth', {
-      username: emailUsername,
-      host: emailHost,
-    })
+    debug('attempting DID Web Auth with', email)
     try{
       let redirectUrl = await loginWithDIDWebAuth({
         ourHostDID: req.app.did,
@@ -189,13 +182,13 @@ routes.post('/signin', async (req, res, next) => {
        * here is where you can specify the callback url
        **/
       redirectUrl.searchParams.set('returnTo', `${req.app.origin}/login/from/${emailHost}`)
-      console.log({ redirectUrl })
+      debug('redirecting to login via did-web', { redirectUrl })
       return res.redirect(redirectUrl)
     }catch(error){
-      console.error(error)
+      debug('failed to login via DID Web with', email, 'error', error)
       loginWithDIDWebAuthError = error
     }
-    return renderSigninPage({
+    return renderSignInPage({
       error: (
         `${emailHost} does not appear to support did-web-auth.` +
         ( loginWithDIDWebAuthError ? `\n${loginWithDIDWebAuthError.message}` : '')
@@ -223,24 +216,21 @@ async function loginWithDIDWebAuth({
   const authProviderDIDDocument = await resolveDIDDocument(authProviderDID)
   // TODO validate the host's DID Document harder
   const authProviderSigningKeys = await getSigningKeysFromDIDDocument(authProviderDIDDocument)
-  console.log({ authProviderDIDDocument, authProviderSigningKeys })
 
   const userDIDDocument = await resolveDIDDocument(userDID)
   if (!userDIDDocument) {
     throw new Error(`failed to fetch signin did document for "${userDID}"`)
   }
-  console.log({ userDIDDocument })
-  // search the userDIDDocument for an auth service endpoint
+  debug('did document for', { userDID, userDIDDocument })
+  // search the userDIDDocument for an DIDWebAuth service endpoint
   const didWebAuthServices = (userDIDDocument.service || [])
-    .filter(service =>
-      // service.id === '#did-web-auth' // TODO TDB this is more complex
-      service.type === "DIDWebAuth"
-    )
+    .filter(service => service.type === "DIDWebAuth")
 
   if (didWebAuthServices.length === 0){
     throw new Error(`no valid service found in did document for ${userDID}`)
   }
-  const didWebAuthService = didWebAuthServices[0] // for now just try the first matching endpoint
+  // for now just try the first matching endpoint
+  const didWebAuthService = didWebAuthServices[0]
   const url = didWebAuthService.serviceEndpoint
   const outgoingJWS = await createJWS({
     payload: {
@@ -270,7 +260,7 @@ async function loginWithDIDWebAuth({
   })
   const { jws: incomingJWS } = await response.json()
   const data = await verifyJWS(incomingJWS, authProviderSigningKeys)
-  console.log('destination app received response from auth provider', data)
+  debug('destination app received response from auth provider', data)
   if (data.redirectTo) return data.redirectTo
   throw new Error('unsupported response from auth provider')
 }
@@ -327,28 +317,28 @@ routes.post('/auth/did', async (req, res, next) => {
   }
   // get the did document of whoever sent this request
   const destinationDIDDocument = await resolveDIDDocument(destinationDID)
-  console.log({ destinationDID })
+  debug('destination DIDDocument', destinationDID, destinationDIDDocument)
 
-  console.log(JSON.stringify({ destinationDIDDocument }, null, 2))
   // extract the signing keys from the did document
   const senderSigningKeys = await getSigningKeysFromDIDDocument(destinationDIDDocument)
   const data = await verifyJWS(incomingJWS, senderSigningKeys)
+  debug('jws data', data)
   const { userDID, /*now,*/ requestId } = data
   // TODO check now to see if its too old
 
-  console.log({ destinationDID })
+
+  /**
+   * ensure the user exists and we are its auth provider
+   */
   const userDIDParts = praseDIDWeb(userDID)
+  // if the hosts doesn't match us: 404
   if (req.app.host !== userDIDParts.host){
     return res.status(404).json({ error: 'user not found' })
   }
   const user = await db.getUserByUsername(userDIDParts.username)
-  if (!user){
+  if (!user){ // if the user record doesn't exist: 404
     return res.status(404).json({ error: 'user not found' })
   }
-  // TODO check that the useDID actually maps to a user in this app
-
-  // const senderEncryptionKeys = await getEncryptionKeysFromDIDDocument(destinationDIDDocument)
-  // console.log({ senderEncryptionKeys })
 
   /**
    * This redirectTo tells the destination app where to redirect
@@ -360,18 +350,18 @@ routes.post('/auth/did', async (req, res, next) => {
   /**
    * This JWS…
    */
+  const payload = {
+    redirectTo,
+    userDID,
+    requestId,
+  }
   const jws = await createJWS({
-    payload: {
-      redirectTo,
-      // hostDID, // redundant?
-      userDID,
-      requestId,
-    },
+    payload,
     signers: [req.app.signingKeyPair.privateKey],
   })
-  console.log(
+  debug(
     `auth provider responding to destination app`,
-    { did: req.app.did, jws }
+    { did: req.app.did, jws: payload }
   )
   res.json({ did: req.app.did, jws })
 })
@@ -445,33 +435,30 @@ routes.post('/login/to', async (req, res, next) => {
   let { destinationHost, returnTo, accept, duration, durationUnit } = req.body
   const destinationHostDID = `did:web:${destinationHost}`
   const destinationHostDIDDocument = await resolveDIDDocument(destinationHostDID)
-  console.log({ destinationHostDIDDocument })
+  debug({ destinationHostDID })
+  debug({ destinationHostDIDDocument })
   returnTo = new URL(returnTo || `https://${destinationHost}`)
-
-  const userDID = `did:web:${req.app.host}:u:${req.user.username}`
-  console.log({ userDID })
 
   if (accept) {
     const jwt = await createSignedJWT({
       privateKey: req.app.signingKeyPair.privateKey,
       payload: {
         profileURL: `${req.app.origin}/@${req.user.username}/profile.json`,
-        // claims: 'I make a mean smash burger'
         /**
-         * I dont know what goes in here yet
-         * this is where I left off
+         * NOTE: more data can be shared here
          */
       },
       issuer: req.app.did,
       audience: destinationHostDID,
-      subject: userDID,
+      subject: req.user.did,
       expirationTime: `${duration}${durationUnit}`,
     })
+    debug('[auth provider] replying with JWT', jwt)
     returnTo.searchParams.set('jwt', jwt)
   }else{
     returnTo.searchParams.set('rejected', '1')
   }
-  console.log(`auth provider redirecting back to destination app ${returnTo}`)
+  debug(`[auth provider] redirecting back to destination app at ${returnTo}`)
   res.redirect(returnTo)
 })
 
@@ -552,15 +539,11 @@ routes.post('/signout', async (req, res, next) => {
  **/
 routes.get('/u/:username/did.json', async (req, res, next) => {
   const { username } = req.params
-  console.log({ username })
   const user = await db.getUserByUsername(username)
-  console.log({ user })
-  if (!user) return res.status(404).json({
-    error: 'not found'
-  })
+  if (!user) return res.status(404).json({ error: 'not found' })
   const host = req.hostname
   const origin = `https://${host}`
-  const did = `did:web:${host}:u:${username}`
+  const did = user.did
   /**
    * in production this did document should/could have more than
    * just two key pairs.
@@ -572,6 +555,10 @@ routes.get('/u/:username/did.json', async (req, res, next) => {
     ],
     "id": did,
     "verificationMethod": [
+      /**
+      * in production these keys should come from a set of variable site,
+      * here were just using the minimum two necessary for this POC
+      */
       {
         "id": `${did}#signing-keys-1`,
         "type": "JsonWebKey2020",
@@ -594,6 +581,7 @@ routes.get('/u/:username/did.json', async (req, res, next) => {
     "service": [
       {
         "type": "DIDWebAuth",
+        // this URL is customizable per auth provider
         "serviceEndpoint": `${origin}/auth/did`,
         "username": username,
         "profileUrl": `${origin}/@${username}`,
@@ -601,7 +589,6 @@ routes.get('/u/:username/did.json', async (req, res, next) => {
     ]
   })
 })
-
 
 
 /**
@@ -615,12 +602,6 @@ routes.post('/profile', async (req, res, next) => {
 })
 
 
-
-
-
-
-
-
 /*
 debug route
 */
@@ -628,6 +609,8 @@ routes.get('/debug', async (req, res, next) => {
   res.render('pages/debug', {
     debug: {
       users: await db.knex.select('*').from('users'),
+      cryptoKeys: await (await db.knex.select('*').from('crypto_keys'))
+        .map(x => { x.jwk = JSON.parse(x.jwk); return x }),
       profiles: await db.knex.select('*').from('profiles'),
       sessions: await db.knex.select('*').from('sessions'),
     }

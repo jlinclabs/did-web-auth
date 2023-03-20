@@ -1,5 +1,8 @@
+import Debug from 'debug'
 import Knex from 'knex'
 import bcrypt from 'bcrypt'
+
+const debug = Debug('did-web-auth.db')
 
 import {
   generateSigningKeyPair,
@@ -47,7 +50,7 @@ const db = {
     }
     // if we made new keys, insert them
     if (keyPairsToInsert.length > 0){
-      console.log('CREATING APP CRYPTO KEYS')
+      debug('creating app crypto key pairs')
       await this.knex('crypto_keys').insert(
         keyPairsToInsert.map(async ([type, jwk]) => {
           return {
@@ -200,7 +203,7 @@ const db = {
 export default db
 
 async function fetchProfile(url){
-  console.log('fetching remote profile', url)
+  debug('fetching remote profile', url)
   // TODO lower timeout
   // in a production app you'll probably want to cache these results
   const res = await fetch(url, {
