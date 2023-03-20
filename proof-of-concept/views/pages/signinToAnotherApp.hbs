@@ -2,10 +2,10 @@
   <div class="bg-white rounded overflow-hidden shadow-lg p-4 my-6 border border-slate-200">
 
     <h1 class="mb-4 text-xl font-semibold text-center">
-      Login to {{destinationHost}}
+      Login to {{clientHost}}
     </h1>
     <h1 class="my-4">
-      <span class="font-semibold">{{destinationHost}}</span>
+      <span class="font-semibold">{{clientHost}}</span>
       is requesting permission to create an
       account in their system, using your
       <span class="font-semibold">{{host}}</span>
@@ -15,7 +15,7 @@
     {{#if user}}
       <h1 class="my-4">
         Would you like to login to
-        <span class="font-semibold">{{destinationHost}}</span>
+        <span class="font-semibold">{{clientHost}}</span>
         with your
         <span class="font-semibold">
           {{usernameToEmail user.username}}
@@ -25,7 +25,7 @@
       <div class="my-6">
         <form action="/login/to" method="POST">
           {{!-- TODO ensure no cross-domain posts with a CSRF variable --}}
-          <input type="hidden" name="destinationHost" value="{{destinationHost}}"/>
+          <input type="hidden" name="clientHost" value="{{clientHost}}"/>
           <input type="hidden" name="returnTo" value="{{returnTo}}"/>
 
 
