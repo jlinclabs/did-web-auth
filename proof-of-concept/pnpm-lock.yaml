@@ -2,6 +2,7 @@ lockfileVersion: 5.4
 
 specifiers:
   '@mapbox/to-color': ^2.0.0
+  '@stablelib/sha256': ^1.0.1
   bcrypt: ^5.1.0
   better-sqlite3: ^8.2.0
   body-parser: ^1.20.2
@@ -10,6 +11,8 @@ specifiers:
   chroma-js: ^2.4.2
   connect-session-knex: ^3.0.1
   debug: ^4.3.4
+  did-jwt: ^6.11.5
+  did-jwt-vc: ^3.1.2
   did-resolver: ^4.1.0
   dids: ^4.0.0
   eslint: ^8.36.0
@@ -25,17 +28,21 @@ specifiers:
   node-fetch: ^3.3.1
   node-puma-dev: ^0.0.1
   nodemon: ^2.0.21
+  uint8arrays: ^4.0.3
   web-did-resolver: ^2.0.21
   yargs: ^17.7.1
 
 dependencies:
   '@mapbox/to-color': 2.0.0
+  '@stablelib/sha256': 1.0.1
   bcrypt: 5.1.0
   better-sqlite3: 8.2.0
   body-parser: 1.20.2
   chroma-js: 2.4.2
   connect-session-knex: 3.0.1_better-sqlite3@8.2.0
   debug: 4.3.4
+  did-jwt: 6.11.5
+  did-jwt-vc: 3.1.2
   did-resolver: 4.1.0
   dids: 4.0.0
   express: 4.18.2
@@ -48,6 +55,7 @@ dependencies:
   knex: 2.4.2_better-sqlite3@8.2.0
   multiformats: 11.0.2
   node-fetch: 3.3.1
+  uint8arrays: 4.0.3
   web-did-resolver: 2.0.21
   yargs: 17.7.1
 
@@ -1126,6 +1134,14 @@ packages:
   /detect-libc/2.0.1:
     resolution: {integrity: sha512-463v3ZeIrcWtdgIg6vI6XUncguvr2TnGl4SzDXinkt9mSLpBJKXT3mW6xT3VQdDN11+WVs29pgvivTc4Lp8v+w==}
     engines: {node: '>=8'}
+    dev: false
+
+  /did-jwt-vc/3.1.2:
+    resolution: {integrity: sha512-+3P2wsUF+61nmjnKaH6ueIlCMjz/NGP+vzu07HyBfTR/wVIALMpMLwS4Goz8uFkBidmCjr0zYJnXk+GWdGVfNg==}
+    engines: {node: '>=14'}
+    dependencies:
+      did-jwt: 6.11.5
+      did-resolver: 4.1.0
     dev: false
 
   /did-jwt/6.11.5:

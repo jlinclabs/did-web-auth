@@ -1,3 +1,4 @@
+import { DID } from 'dids'
 import { Resolver } from 'did-resolver'
 import * as KeyResolver from 'key-did-resolver'
 import * as WebResolver from 'web-did-resolver'
@@ -7,6 +8,12 @@ const resolver = new Resolver({
   ...KeyResolver.getResolver(),
   ...WebResolver.getResolver(),
 })
+
+// export async function instantiateDID(id){
+//   const did = new DID({ provider, resolver })
+//   await did.resolve(id)
+//   return did
+// }
 
 export function praseDIDWeb(did){
   const matches = did.match(/^did:web:([^:]+)(:u:([^:]+)$|:.*|$)/)

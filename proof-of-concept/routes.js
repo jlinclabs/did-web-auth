@@ -19,6 +19,7 @@ import {
   resolveDIDDocument,
   getSigningKeysFromDIDDocument,
 } from './dids.js'
+import { createVC } from './credentials.js'
 
 
 const routes = new Router
@@ -46,8 +47,19 @@ routes.use(async (req, res, next) => {
  * docs: https://identity.foundation/.well-known/resources/did-configuration/#did-configuration-uri
  */
 routes.get('/.well-known/did-configuration.json', async (req, res, next) => {
-  const did = signingKeyPairToDIDKey(req.app.signingKeyPair)
+  const didWeb = req.app.did
+  const didKey = signingKeyPairToDIDKey(req.app.signingKeyPair)
   const issuanceDate = req.app.signingKeyPair.createdAt
+
+  // const verifiableCredential = createVC({
+  //   issuerDID: didWeb,
+  //   signingKeyPair: req.app.signingKeyPair,
+  //   credentialSubject: {
+  //     id: `${didWeb}`,
+  //     origin: req.app.origin,
+  //   }
+  // })
+
   const verifiableCredential = {
     "@context": [
       "https://www.w3.org/2018/credentials/v1",

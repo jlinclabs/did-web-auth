@@ -1,6 +1,10 @@
 import crypto from 'crypto'
 import * as jose from 'jose'
 import { base58btc } from 'multiformats/bases/base58'
+import {
+  createVerifiableCredentialJwt,
+  createVerifiablePresentationJwt,
+} from 'did-jwt-vc'
 
 const PublicKeyObject = crypto.generateKeyPairSync('ed25519').publicKey.constructor
 const PrivateKeyObject = crypto.generateKeyPairSync('ed25519').privateKey.constructor
@@ -257,3 +261,4 @@ export function finalizeDiffieHellman(actor, { publicKey }){
   publicKey = Buffer.from(publicKey, 'base64url')
   return actor.computeSecret(publicKey)
 }
+
