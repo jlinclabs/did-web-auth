@@ -2,21 +2,25 @@
 
 ## TODO
 
-            Update this spec to rename things given new understanding of how did documents
-            are used to resolve service endpoints.
+  Update this spec to rename things given new understanding of how did documents
+  are used to resolve service endpoints.
 
 
-            ```
-            redo the  `Auth Resolution Methods` part of this spec
-            ### Auth Resolution Methods
-            #### magic-link
-            #### secret-code
-            #### http-redirect
-            #### callback
-            ```
+  ```
+  redo the  `Auth Resolution Methods` part of this spec
+  ### Auth Resolution Methods
+  #### magic-link
+  #### secret-code
+  #### http-redirect
+  #### callback
+  ```
 
 
-            define the nessesary routes
+- [ ] define the nessesary routes
+- [ ] define error codes for JSON responses
+
+
+
 
 
 
@@ -162,18 +166,173 @@ resources.
 
 
 
-## Hosting Identifiers
+## Auth Providers
 
-Hosting
+An auth provider is a web application that meeds the following
+specification:
 
-### Services
+### HTTP Endpoints
 
-DID Services in accordance with https://www.w3.org/TR/did-core/#services
+Auth providers must respond to the following HTTP endpoints:
 
-**META NOTE: allow http endpoints for service to be defined as services in
-the did document instead of by this spec.**
+| name                 | path                                           |
+|----------------------|------------------------------------------------|
+| Domain DID Doc       | /.well-known/did.json                          |
+| Domain DID Conf      | /.well-known/did-configuration.json            |
+| User DID Document    | /u/:alice/did.json                             |
+| DID Auth Endpoint    | [defined in User DID Document services]        |
+| Sign in Confirmation | [defined in response from "DID Auth Endpoint"] |
 
-Similar project: https://didcomm.org/
+
+#### Domain DID Doc
+
+Must render a valid DID Document in JSON format.
+
+Must comply with the [DID Web SPEC](https://w3c-ccg.github.io/did-method-web/) and contain a proof that this
+DID Document owns this domain.
+
+#### Domain DID Conf
+
+Must comply with the [Well Known DID Configuration SPEC](https://identity.foundation/.well-known/resources/did-configuration/) and contain a verifiable credential
+for the claim over this domain.
+
+#### User DID Document
+
+Must render a valid DID Document in JSON format.
+
+Must comply with the [DID Web SPEC](https://w3c-ccg.github.io/did-method-web/) and contain a proof that this
+DID Document owns this domain.
+
+Must contain a an entry in the services sections like this:
+
+```json
+{
+  "type": "DIDWebAuth",
+  "serviceEndpoint": "https://example-auth-provider.com/auth/did"
+}
+```
+
+The `serviceEndpoint` must be at the same domain as the DID.
+The pathname portion of the `serviceEndpoint` can be any path.
+
+
+#### DID Auth Endpoint
+
+This endpoint can be at any path the Auth Provider wants.
+
+This path is give then to clients as the
+
+- method: POST
+- path: [defined by the service endpoint in the user's DID Document]
+
+The post body should be `application/json`
+
+```json
+// example
+{
+  "clientDID": "did:web:example-client.com", // Client App's host DID
+  "authenticationRequest": { // An Authentication Request JWS
+    "signatures": [],
+    "payload": "…"
+  }
+}
+```
+
+The Authentication Request JWS should contain
+
+```json
+// example
+{
+  "@context": [ '/tbd/app-login-request' ],
+  "userDID": "did:web:example.com:u:alice",
+  "now": 1679337797475, // Date.now() / seconds from epoch
+  "requestId": "EvgbfZevI5MEL31ZUbtpPw" // a nonce
+}
+```
+
+Auth providers should resolve and
+[verify the Client](#verifying-client-apps)'s well-known DID Document.
+
+The Auth provider should verify the `authenticationRequest` `JWS`
+using the signing keys listing in the Client's well-known DID Document.
+
+The `now` value should be use to establish a limited time window where
+the `authenticationRequest` is invalidated. This is to prevent old
+`authenticationRequest` request from being used. If the
+`authenticationRequest` is too old a 401 should be rendered.
+
+*TODO: this should render a JSON response with an ERROR_CODE*
+
+The `userDID` value should be used to find a local user. If a user is
+not found a 404 should be rendered.
+
+The response should be content type `application/json` and contain
+an `authenticationResponse` JWS.
+
+##### Authentication Response
+
+```json
+//example
+{
+  "authenticationResponse": { // An Authentication Response JWS
+    "signatures": [],
+    "payload": "…"
+  }
+}
+```
+
+The `authenticationResponse` payload should contain the keys
+
+
+| property   | description
+|------------|---------
+| redirectTo | The auth provider's "Sign in Confirmation" endpoint
+| userDID    | the previously provided userDID
+| requestId  | the previously provided requestId
+
+The Auth Provider can use any pathname they like but the `redirectTo` URL
+must be at the same origin. The url can also include any query params
+needed to to ensure the right user is properly identified after redirection.
+
+```
+// Example Authentication Response
+{
+  "redirectTo": "https://example-auth-provider.com/login/to/example-client.com",
+  "userDID": "did:web:example-auth-provider.com:u:alice",
+  "requestId": "MRmHXKKVB-wf9kIh3a9Edg",
+}
+```
+
+
+
+#### Sign in Confirmation
+
+This is the http endpoint that users are redirect to after requesting
+to sign in to a client application.
+
+The pathname for this endpoint can be anything but must be specified
+in the [Authentication Response](#authentication-response).
+
+This endpoint is where the auth provider prompts its user to
+either `accept` or `reject` the authentication request.
+
+If no user is logged in the Auth Provider app should first request
+the user to sign into their Auth Provider account.
+
+**NODE: How Auth Providers authenticate their users is our of scope for this SPEC**
+
+Once the user is logged into the Auth provider should prompt the user
+to either `accept` or `reject` the authentication request.
+
+Optionally the user can also be prompted to specify how long until her
+permission expires.
+
+
+### User DID Document
+
+Must have an entry in the Services
+
+
 
 ####
 

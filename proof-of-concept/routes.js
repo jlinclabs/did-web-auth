@@ -126,7 +126,7 @@ routes.get('/.well-known/did.json', async (req, res, next) => {
         "publicKeyJwk": await keyPairToPublicJWK(encryptingKeyPair),
       }
     ],
-    "services": [
+    "service": [
       // {} TODO set the did web service here
     ]
   })
@@ -318,19 +318,21 @@ async function loginWithDIDWebAuth({
       // '@context': [
       //   '/tbd/host-to-host-message'
       // ],
-      hostDID: ourHostDID,
+      clientDID: ourHostDID,
       authenticationRequest
     })
   })
-  const { jws: incomingJWS } = await response.json()
-  const data = await verifyJWS(incomingJWS, authProviderSigningKeys)
+  // const { authenticationRequest } = await response.json()
+  const { authenticationResponse } = await response.json()
+  const data = await verifyJWS(authenticationResponse, authProviderSigningKeys)
   debug('client app received response from auth provider', data)
   if (data.redirectTo) return data.redirectTo
   throw new Error('unsupported response from auth provider')
 }
 
 /*
-user login request endpoint
+
+did auth endpoint
 
 The is an auth provider endpoint
 
@@ -350,8 +352,8 @@ redirectTo url from the Auth provider and redirects
 the user there.
 
 body:
-  - hostDID `the sending app's DID`
-  - jws `a JSON Web Signature token`
+  - clientDID (the sending app's DID)
+  - authenticationRequest (a JSON Web Signature token)
     - payload
       - userDID
       - now
@@ -359,10 +361,10 @@ body:
 */
 routes.post('/auth/did', async (req, res, next) => {
   const {
-    hostDID: clientDID,
+    clientDID,
     authenticationRequest,
   } = req.body
-  //
+
   if (!clientDID){
     res.status(400).json({ error: 'clientDID is required' })
   }
@@ -372,7 +374,7 @@ routes.post('/auth/did', async (req, res, next) => {
 
   /**
    * here is where apps can optionally white/black list
-   * other sites from login requests
+   * auth providers by domain
    */
 
   const { host: clientHost } = praseDIDWeb(clientDID)
@@ -388,6 +390,11 @@ routes.post('/auth/did', async (req, res, next) => {
   const data = await verifyJWS(authenticationRequest, senderSigningKeys)
   debug('authenticationRequest data', data)
   const { userDID, /*now,*/ requestId } = data
+  const jwsCreatedAt = new Date(data.now)
+  // if the signed `now` datetime was < 60 seconds ago
+  if (jwsCreatedAt < new Date(Date.now() - (1000 * 60))){
+    return res.status(400).json({ error: 'invalid authenticationRequest' })
+  }
   // TODO check now to see if its too old
 
 
@@ -415,25 +422,23 @@ routes.post('/auth/did', async (req, res, next) => {
    * This JWS…
    */
   const payload = {
-    redirectTo,
+    redirectTo: redirectTo.toString(),
     userDID,
     requestId,
   }
-  const jws = await createJWS({
+  const authenticationResponse = await createJWS({
     payload,
     signers: [req.app.signingKeyPair.privateKey],
   })
-  debug(
-    `auth provider responding to client app`,
-    { did: req.app.did, jws: payload }
-  )
-  res.json({ did: req.app.did, jws })
+  debug(`auth provider responding to client app`, { authenticationResponse: payload })
+  console.log({ authenticationResponse })
+  res.json({ authenticationResponse })
 })
 
 /**
  * login to another app page route
  *
- * This is an Auth Provider route
+ * The is an auth provider endpoint
  *
  * the user is redirected here to get permission to login
  * to the client app. This page propts the user to
@@ -492,7 +497,7 @@ routes.get('/login/to/:host', async (req, res, next) => {
 /**
  * receive result of redirecting to auth provider
  *
- * this is a client app route
+ * The is an auth provider endpoint
  *
  * This is the route that the above route's form posts to
  *
@@ -649,10 +654,7 @@ routes.get('/u/:username/did.json', async (req, res, next) => {
     "service": [
       {
         "type": "DIDWebAuth",
-        // this URL is customizable per auth provider
         "serviceEndpoint": `${origin}/auth/did`,
-        "username": username,
-        "profileUrl": `${origin}/@${username}`,
       }
     ]
   })
