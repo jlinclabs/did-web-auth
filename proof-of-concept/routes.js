@@ -514,7 +514,7 @@ routes.post('/login/to', async (req, res, next) => {
   returnTo = new URL(returnTo || `https://${clientHost}`)
 
   if (accept) {
-    const jwt = await createSignedJWT({
+    const authToken = await createSignedJWT({
       privateKey: req.app.signingKeyPair.privateKey,
       payload: {
         profileURL: `${req.app.origin}/@${req.user.username}/profile.json`,
@@ -527,8 +527,8 @@ routes.post('/login/to', async (req, res, next) => {
       subject: req.user.did,
       expirationTime: `${duration}${durationUnit}`,
     })
-    debug('[auth provider] replying with JWT', jwt)
-    returnTo.searchParams.set('jwt', jwt)
+    debug('[auth provider] replying with authToken', authToken)
+    returnTo.searchParams.set('authToken', authToken)
   }else{
     returnTo.searchParams.set('rejected', '1')
   }
@@ -551,13 +551,17 @@ routes.post('/login/to', async (req, res, next) => {
  */
 routes.get('/login/from/:host', async (req, res, next) => {
   const { host } = req.params
-  const { jwt } = req.query
+  const { authToken } = req.query
 
   const authProviderDID = `did:web:${host}`
   const authProviderDIDDocument = await resolveDIDDocument(authProviderDID)
   const authProviderSigningKeys = await getSigningKeysFromDIDDocument(authProviderDIDDocument)
-  const jwtData = await verifySignedJWT(jwt, authProviderSigningKeys)
-  const userDID = jwtData.sub
+  const authTokenData = await verifySignedJWT(authToken, authProviderSigningKeys)
+  debug({ authTokenData })
+  const userDID = authTokenData.sub
+
+  // TODO persist auth tokens
+
   /**
    *  we need to make sure that one of the users singing keys
    *  has signed something we gave them before this point
@@ -566,7 +570,7 @@ routes.get('/login/from/:host', async (req, res, next) => {
    **/
   const user = await db.findOrCreateRemoteUser({
     did: userDID,
-    profileURL: jwtData.profileURL,
+    profileURL: authTokenData.profileURL,
   })
   await req.login(user.id)
   res.redirect('/') // TODO pass around a client url

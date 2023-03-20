@@ -168,28 +168,45 @@ specification:
 
 Auth providers must respond to the following HTTP endpoints:
 
-| name                 | path                                           |
-|----------------------|------------------------------------------------|
-| Domain DID Doc       | /.well-known/did.json                          |
-| Domain DID Conf      | /.well-known/did-configuration.json            |
-| User DID Document    | /u/:alice/did.json                             |
-| DID Auth Endpoint    | [defined in User DID Document services]        |
-| Sign in Confirmation | [defined in response from "DID Auth Endpoint"] |
+| name                                                   | path
+|--------------------------------------------------------|-
+| [Domain DID Document](#domain-did-document-endpoint)   | `/.well-known/did.json`
+| [Domain DID Conf](#domain-did-conf-endpoint)           | `/.well-known/did-configuration.json`
+| [User DID Document](#user-did-document-endpoint)       | `/u/:alice/did.json`
+| [DID Auth Endpoint](#did-auth-endpoint-endpoint)       | defined in User DID Document services
+| [Sign in Confirmation](#sign-in-confirmation-endpoint) | defined in response from [DID Auth Endpoint](#did-auth-endpoint)
 
 
-#### Domain DID Doc
+## Client Applications
+
+### HTTP Endpoints
+
+Auth providers must respond to the following HTTP endpoints:
+
+| name                                                   | path
+|--------------------------------------------------------|-
+| [Domain DID Document](#domain-did-document-endpoint)   | `/.well-known/did.json`
+| [Domain DID Conf](#domain-did-conf-endpoint)           | `/.well-known/did-configuration.json`
+| [Sign in Completion](#sign-in-completion-endpoint)     | defined by the `returnTo` param sent the Auth Providers [Sign in Confirmation endpoint](#sign-in-confirmation-endpoint)
+
+
+
+## Endpoints
+
+
+### Domain DID Document Endpoint
 
 Must render a valid DID Document in JSON format.
 
 Must comply with the [DID Web SPEC](https://w3c-ccg.github.io/did-method-web/) and contain a proof that this
 DID Document owns this domain.
 
-#### Domain DID Conf
+### Domain DID Conf Endpoint
 
 Must comply with the [Well Known DID Configuration SPEC](https://identity.foundation/.well-known/resources/did-configuration/) and contain a verifiable credential
 for the claim over this domain.
 
-#### User DID Document
+### User DID Document Endpoint
 
 Must render a valid DID Document in JSON format.
 
@@ -200,8 +217,12 @@ Must contain a an entry in the services sections like this:
 
 ```json
 {
-  "type": "DIDWebAuth",
-  "serviceEndpoint": "https://example-auth-provider.com/auth/did"
+  "service: [
+    {
+      "type": "DIDWebAuth",
+      "serviceEndpoint": "https://example-auth-provider.com/auth/did"
+    }
+  ]
 }
 ```
 
@@ -209,7 +230,7 @@ The `serviceEndpoint` must be at the same domain as the DID.
 The pathname portion of the `serviceEndpoint` can be any path.
 
 
-#### DID Auth Endpoint
+### DID Auth Endpoint
 
 This endpoint can be at any path the Auth Provider wants.
 
@@ -262,7 +283,7 @@ not found a 404 should be rendered.
 The response should be content type `application/json` and contain
 an `authenticationResponse` JWS.
 
-##### Authentication Response
+#### Authentication Response
 
 ```json
 //example
@@ -279,7 +300,7 @@ The `authenticationResponse` payload should contain the keys
 
 | property   | description
 |------------|---------
-| redirectTo | The auth provider's "Sign in Confirmation" endpoint
+| redirectTo | The auth provider's [Sign in Confirmation endpoint](#sign-in-confirmation-endpoint)
 | userDID    | the previously provided userDID
 | requestId  | the previously provided requestId
 
@@ -297,8 +318,12 @@ needed to to ensure the right user is properly identified after redirection.
 ```
 
 
+The Client App can optionally append a `redirectTo` query param to the
+`redirectTo` URL provided by the Auth Provider. The Auth Provider
+should use this value to redirect the user back to.
 
-#### Sign in Confirmation
+
+### Sign in Confirmation Endpoint
 
 This is the http endpoint that users are redirect to after requesting
 to sign in to a client application.
@@ -321,156 +346,29 @@ Optionally the user can also be prompted to specify how long until her
 permission expires.
 
 
+If the user chooses `reject` the auth provider should redirect the user
+to the client app (via the redirectTo) with the additional query param
+`rejected=1`.
 
 
-## Client Applications
+If the user chooses `accept` the auth provider should redirect the user
+to the client app (via the redirectTo) with the additional query param
+`authToken` containing a JWT [Auth Token](#auth-token)
 
-### HTTP Endpoints
 
-Auth providers must respond to the following HTTP endpoints:
 
-| name                 | path                                           |
-|----------------------|------------------------------------------------|
-| Domain DID Doc       | /.well-known/did.json                          |
-| Domain DID Conf      | /.well-known/did-configuration.json            |
-| Sign in Completion   | [defined by the `returnTo` param send to ]
 
+### Sign in Completion Endpoint
 
+This endpoint is required to be a client application.
 
-------
+This endpoint can be at any pathname the client application desires.
 
 
-### User DID Document
 
-Must have an entry in the Services
 
 
 
-####
-
-### Protocol Endpoints
-
-Any HTTP domain can host [did:web][did-web-spec] [identifiers][did-spec].
-Hosting DIDs requires the host to respond to the following endpoints:
-
-- host did document endpoint
-- identifier did document endpoint
-- authentication endpoint
-- message endpoint
-
-
-#### Host DID Document Endpoint
-
-The host should have its own identifier as a did document in accordance to the
-[Well Known DID Configuration](https://identity.foundation/.well-known/resources/did-configuration/) spec.
-
-An HTTPS GET request to `https://${origin}/.well-known/did.json` should
-return  valid DID Document including at least one signing keys pair.
-
-*response body signature header required*
-
-https://www.w3.org/TR/did-core/#example-usage-of-the-service-property
-
-```json
-{
-  "service": [{
-    "id":"did:example:123#linked-domain",
-    "type": "LinkedDomains",
-    "serviceEndpoint": "https://example.com"
-  }]
-}
-```
-
-#### Identifier DID Document Endpoint
-
-GET `https://${origin}/dids/${id}/did.json`
-
-A valid DID Document including at least one signing keys pair.
-
-This DID document can and should include entries in their `"services"` section.
-
-
-#### Authentication Endpoint
-
-POST `https://${origin}/dids/${id}/auth`
-
-This endpoint takes a one-time authorization grant token and, if valid,
-returns a access token. The access token is verifiable
-[JSON Web Token][jwt-spec]. Applications should validate this JWT keep it a
-secret.
-
-
-Example post body:
-
-```json
-{
-  "authToken": "d58c27ba1de705af6a41e54d7bacfdad9f74dee7"
-}
-```
-
-example response body:
-
-```json
-{
-  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.
-  eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
-}
-```
-
-For information on how to obtain an authorization grant token see the
-[Authentication Flow](#authentication-flow).
-
-
-
-
-
-#### Message Endpoint
-
-Optional endpoint to receive message for an identifier
-
-POST `https://${origin}/dids/${id}/inbox`
-
-
-
-
-
-
-### Encoding
-
-Public keys should always be encoded as strings using
-[URL Safe Base64 Encoding](https://www.rfc-editor.org/rfc/rfc4648).
-
-### TLS
-
-Transport Layer Security is considered essential at all times. Using this
-protocol over insecure connections is not recommended.
-
-
-### HTTP Redirections
-
-This specification makes extensive use of HTTP redirections, in which the
-client or the authorization server directs the resource owner's user-agent
-to another destination.  While the examples in this specification show the
-use of the HTTP 302 status code, any other method available via the
-user-agent to accomplish this redirection is allowed and is considered to be
-an implementation detail.
-
-
-
-
-### Client Registration
-
-Unlike OAuth there is not client registration. Any http domain that complies
-with this specification should interoperate with any other.
-
-## DNS Attack Prevention
-
-To protect against
-[DNS attacks](https://w3c-ccg.github.io/did-method-web/#dns-security-considerations)
-an additional response header containing a signature of the body is required
-for all responses that don't return a signed response (like a JWT).
-
-The signature must be from a key present in the current domain did document.
 
 
 
@@ -489,10 +387,10 @@ The signature must be from a key present in the current domain did document.
 
 ```mermaid
 sequenceDiagram
-  User->>+App: Step 1
-  App->>+IdHost: Step 2
-  IdHost->>-App: Step 3
-  App->>-User: Step 4
+  User->>+ClientApp: Step 1
+  ClientApp->>+AuthProvider: Step 2
+  AuthProvider->>-ClientApp: Step 3
+  ClientApp->>-User: Step 4
 ```
 
 1. User visits a new app and gives them their did in email address form
@@ -598,6 +496,70 @@ TDB…
 
 Credentials are revokable so verifying applications should request updated
 copies before granting access.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### Encoding
+
+Public keys should always be encoded as strings using
+[URL Safe Base64 Encoding](https://www.rfc-editor.org/rfc/rfc4648).
+
+### TLS
+
+Transport Layer Security is considered essential at all times. Using this
+protocol over insecure connections is not recommended.
+
+
+### HTTP Redirections
+
+This specification makes extensive use of HTTP redirections, in which the
+client or the authorization server directs the resource owner's user-agent
+to another destination.  While the examples in this specification show the
+use of the HTTP 302 status code, any other method available via the
+user-agent to accomplish this redirection is allowed and is considered to be
+an implementation detail.
+
+
+
+
+### Client Registration
+
+Unlike OAuth there is not client registration. Any http domain that complies
+with this specification should interoperate with any other.
+
+## DNS Attack Prevention
+
+To protect against
+[DNS attacks](https://w3c-ccg.github.io/did-method-web/#dns-security-considerations)
+an additional response header containing a signature of the body is required
+for all responses that don't return a signed response (like a JWT).
+
+The signature must be from a key present in the current domain did document.
+
+
+
 
 
 
