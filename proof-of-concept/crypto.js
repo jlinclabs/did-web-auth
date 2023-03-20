@@ -1,6 +1,5 @@
 import crypto from 'crypto'
 import * as jose from 'jose'
-import { base64url } from 'multiformats/bases/base64' // replace with jose.base64url
 
 const PublicKeyObject = crypto.generateKeyPairSync('ed25519').publicKey.constructor
 const PrivateKeyObject = crypto.generateKeyPairSync('ed25519').privateKey.constructor
@@ -8,7 +7,7 @@ const PrivateKeyObject = crypto.generateKeyPairSync('ed25519').privateKey.constr
 export { PublicKeyObject, PrivateKeyObject }
 
 export function createNonce(length = 16){
-  return base64url.encode(crypto.randomBytes(length))
+  return crypto.randomBytes(length).toString('base64url')
 }
 
 export async function generateSigningKeyPair(){
@@ -33,7 +32,7 @@ export function publicKeyFromJWK(publicJWK){
 }
 export async function keyPairFromJWK(privateJWK){
   const publicJWK = {...privateJWK}
-  delete publicJWK.d // TODO there is more to delete here
+  delete publicJWK.d // TODO ensure we are deleting enough here
   return {
     publicKey: publicKeyFromJWK(publicJWK),
     privateKey: crypto.createPrivateKey({ format: 'jwk', key: privateJWK }),
@@ -63,6 +62,9 @@ export function isSamePrivateKeyObject(a, b){
   return privateKeyToBuffer(a).equals(privateKeyToBuffer(b))
 }
 
+/**
+ * create a JSON Web Signature
+ */
 export async function createJWS({ payload, signers }){
   const proto = new jose.GeneralSign(
     new TextEncoder().encode(JSON.stringify(payload))
@@ -75,7 +77,9 @@ export async function createJWS({ payload, signers }){
   return await proto.sign()
 }
 
-
+/**
+ * verify a JSON Web Signature
+ */
 export async function verifyJWS(jws, publicKeys){
   if (!Array.isArray(publicKeys)) publicKeys = [publicKeys]
   let lastError, result
@@ -94,7 +98,7 @@ export async function verifyJWS(jws, publicKeys){
 }
 
 /**
- * create a JWE
+ * create a JSON Web Encryption
  */
 export async function createJWE({ payload, recipients }){
   const proto = new jose.GeneralEncrypt(
@@ -109,9 +113,9 @@ export async function createJWE({ payload, recipients }){
 }
 
 /**
- * decrypt a JWE
+ * decrypt a JSON Web Encryption
  */
-export async function verifyJWE(jwe, privateKey){
+export async function decryptJWE(jwe, privateKey){
   const { plaintext } = await jose.generalDecrypt(jwe, privateKey)
   return JSON.parse(plaintext)
 }
@@ -125,7 +129,7 @@ function truncateSecret(secret){
 }
 
 /**
- * create a signed JWT
+ * create a signed JSON Web Token
  */
 export async function createSignedJWT({
   privateKey, payload, issuer, audience, subject, expirationTime = '4weeks',
@@ -142,7 +146,7 @@ export async function createSignedJWT({
 }
 
 /**
- * verify a signed JWT
+ * verify a signed JSON Web Token
  */
 export async function verifySignedJWT(jwt, publicKeys){
   if (!Array.isArray(publicKeys)) publicKeys = [publicKeys]

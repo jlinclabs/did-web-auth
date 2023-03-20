@@ -12,7 +12,7 @@ import {
   createJWS,
   verifyJWS,
   createJWE,
-  verifyJWE,
+  decryptJWE,
   createSignedJWT,
   verifySignedJWT,
   createEncryptedSignedJWT,
@@ -105,12 +105,12 @@ test('JWEs', async t => {
   })
 
   t.alike(
-    await verifyJWE(jwe1, ekp1.privateKey),
+    await decryptJWE(jwe1, ekp1.privateKey),
     { dont: 'tell', anyone: 'ok' }
   )
 
   await t.exception(async () => {
-    await verifyJWE(jwe1, ekp2.privateKey)
+    await decryptJWE(jwe1, ekp2.privateKey)
   })
 })
 

@@ -6,7 +6,7 @@
   "author": "Jared Grippe <jared@jlinc.com>",
   "license": "MIT",
   "scripts": {
-    "lint": "eslint ./*.js ./test/*.js",
+    "lint": "eslint $(find . | grep -vE 'node_modules|coverage' | grep -E '.*\\.(m|c)*js$')",
     "test": "brittle --coverage test/*.test.js"
   },
   "dependencies": {
@@ -27,7 +27,6 @@
     "key-did-provider-ed25519": "^3.0.0",
     "key-did-resolver": "^3.0.0",
     "knex": "^2.4.2",
-    "multiformats": "^11.0.2",
     "node-fetch": "^3.3.1",
     "web-did-resolver": "^2.0.21",
     "yargs": "^17.7.1"
