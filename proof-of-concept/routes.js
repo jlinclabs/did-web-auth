@@ -561,8 +561,10 @@ routes.get('/u/:username/did.json', async (req, res, next) => {
   const host = req.hostname
   const origin = `https://${host}`
   const did = `did:web:${host}:u:${username}`
-  // more complex did management would require persisting records
-  // and generating this document in a more complex way
+  /**
+   * in production this did document should/could have more than
+   * just two key pairs.
+   */
   res.json({
     "@context": [
       "https://www.w3.org/ns/did/v1",
