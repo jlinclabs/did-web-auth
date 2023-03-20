@@ -8,6 +8,7 @@ import db from './db.js'
 import {
   createNonce,
   keyPairToPublicJWK,
+  signingKeyPairToDIDKey,
   createJWS,
   verifyJWS,
   createSignedJWT,
@@ -35,6 +36,48 @@ routes.use(async (req, res, next) => {
     user: req.user,
   })
   next()
+})
+
+/**
+ * the DID Document route
+ *
+ * This route is required but all parties
+ *
+ * docs: https://identity.foundation/.well-known/resources/did-configuration/#did-configuration-uri
+ */
+routes.get('/.well-known/did-configuration.json', async (req, res, next) => {
+  const did = signingKeyPairToDIDKey(req.app.signingKeyPair)
+  const issuanceDate = req.app.signingKeyPair.createdAt
+  const verifiableCredential = {
+    "@context": [
+      "https://www.w3.org/2018/credentials/v1",
+      "https://identity.foundation/.well-known/did-configuration/v1"
+    ],
+    "issuer": `${did}`,
+    "issuanceDate": issuanceDate,
+    "expirationDate": "2025-12-04T14:08:28-06:00",
+    "type": [
+      "VerifiableCredential",
+      "DomainLinkageCredential"
+    ],
+    "credentialSubject": {
+      "id": `${did}`,
+      "origin": req.app.origin,
+    },
+    "proof": {
+      "type": "Ed25519Signature2018",
+      "created": issuanceDate,
+      "jws": "eyJhbGciOiJFZERTQSIsImI2NCI6ZmFsc2UsImNyaXQiOlsiYjY0Il19..D0eDhglCMEjxDV9f_SNxsuU-r3ZB9GR4vaM9TYbyV7yzs1WfdUyYO8rFZdedHbwQafYy8YOpJ1iJlkSmB4JaDQ",
+      "proofPurpose": "assertionMethod",
+      "verificationMethod": `${did}#z6MkoTHsgNNrby8JzCNQ1iRLyW5QQ6R8Xuu6AA8igGrMVPUM`,
+    }
+  }
+  res.json({
+    "@context": "https://identity.foundation/.well-known/did-configuration/v1",
+    "linked_dids": [
+      verifiableCredential,
+    ]
+  })
 })
 
 /**
@@ -232,7 +275,11 @@ async function loginWithDIDWebAuth({
   // for now just try the first matching endpoint
   const didWebAuthService = didWebAuthServices[0]
   const url = didWebAuthService.serviceEndpoint
-  const outgoingJWS = await createJWS({
+
+  /**
+   * Create and Authentication Request
+   */
+  const authenticationRequest = await createJWS({
     payload: {
       '@context': [
         '/tbd/app-login-request'
@@ -251,16 +298,16 @@ async function loginWithDIDWebAuth({
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      '@context': [
-        '/tbd/host-to-host-message'
-      ],
+      // '@context': [
+      //   '/tbd/host-to-host-message'
+      // ],
       hostDID: ourHostDID,
-      jws: outgoingJWS,
+      authenticationRequest
     })
   })
   const { jws: incomingJWS } = await response.json()
   const data = await verifyJWS(incomingJWS, authProviderSigningKeys)
-  debug('destination app received response from auth provider', data)
+  debug('client app received response from auth provider', data)
   if (data.redirectTo) return data.redirectTo
   throw new Error('unsupported response from auth provider')
 }
@@ -270,18 +317,18 @@ user login request endpoint
 
 The is an auth provider endpoint
 
-This endpoint is used by destination apps to sign in
+This endpoint is used by client apps to sign in
 a user into their app.
 
-The auth destination app sends a JWS to the auth
+The client app sends a JWS to the auth
 provider app containing a session request.
 
 The Auth provider responds with a JWE
-containing information on how to the destination app
+containing information on how to the client app
 can continue the sign in process.
 
 The only supported option in this POC is a redirect
-url. Much like oauth, the destination app receives a
+url. Much like oauth, the client app receives a
 redirectTo url from the Auth provider and redirects
 the user there.
 
@@ -295,14 +342,14 @@ body:
 */
 routes.post('/auth/did', async (req, res, next) => {
   const {
-    hostDID: destinationDID,
-    jws: incomingJWS
+    hostDID: clientDID,
+    authenticationRequest,
   } = req.body
   //
-  if (!destinationDID){
-    res.status(400).json({ error: 'destinationDID is required' })
+  if (!clientDID){
+    res.status(400).json({ error: 'clientDID is required' })
   }
-  if (!incomingJWS){
+  if (!authenticationRequest){
     res.status(400).json({ error: 'jws is required' })
   }
 
@@ -311,18 +358,18 @@ routes.post('/auth/did', async (req, res, next) => {
    * other sites from login requests
    */
 
-  const { host: destinationHost } = praseDIDWeb(destinationDID)
-  if (req.app.host === destinationHost){
+  const { host: clientHost } = praseDIDWeb(clientDID)
+  if (req.app.host === clientHost){
     return res.status(401).json({ error: 'your host cannot be our host' })
   }
   // get the did document of whoever sent this request
-  const destinationDIDDocument = await resolveDIDDocument(destinationDID)
-  debug('destination DIDDocument', destinationDID, destinationDIDDocument)
+  const clientDIDDocument = await resolveDIDDocument(clientDID)
+  debug('client DIDDocument', clientDID, clientDIDDocument)
 
   // extract the signing keys from the did document
-  const senderSigningKeys = await getSigningKeysFromDIDDocument(destinationDIDDocument)
-  const data = await verifyJWS(incomingJWS, senderSigningKeys)
-  debug('jws data', data)
+  const senderSigningKeys = await getSigningKeysFromDIDDocument(clientDIDDocument)
+  const data = await verifyJWS(authenticationRequest, senderSigningKeys)
+  debug('authenticationRequest data', data)
   const { userDID, /*now,*/ requestId } = data
   // TODO check now to see if its too old
 
@@ -341,10 +388,10 @@ routes.post('/auth/did', async (req, res, next) => {
   }
 
   /**
-   * This redirectTo tells the destination app where to redirect
+   * This redirectTo tells the client app where to redirect
    * the user at the auth provider app to prompt for authorization
    */
-  const redirectTo = new URL(`${req.app.origin}/login/to/${destinationHost}`)
+  const redirectTo = new URL(`${req.app.origin}/login/to/${clientHost}`)
   redirectTo.searchParams.set('userDID', userDID)
 
   /**
@@ -360,7 +407,7 @@ routes.post('/auth/did', async (req, res, next) => {
     signers: [req.app.signingKeyPair.privateKey],
   })
   debug(
-    `auth provider responding to destination app`,
+    `auth provider responding to client app`,
     { did: req.app.did, jws: payload }
   )
   res.json({ did: req.app.did, jws })
@@ -372,13 +419,13 @@ routes.post('/auth/did', async (req, res, next) => {
  * This is an Auth Provider route
  *
  * the user is redirected here to get permission to login
- * to the destination app. This page propts the user to
+ * to the client app. This page propts the user to
  * accept or reject the sign in request.
  */
 routes.get('/login/to/:host', async (req, res, next) => {
-  const { host: destinationHost } = req.params
+  const { host: clientHost } = req.params
   // if were trying to login to ourselves
-  if (destinationHost.toLowerCase() === req.app.host.toLowerCase()){
+  if (clientHost.toLowerCase() === req.app.host.toLowerCase()){
     // render an error
     res.status(400).render('pages/error', { message: 'bad request' })
   }
@@ -386,7 +433,7 @@ routes.get('/login/to/:host', async (req, res, next) => {
   if (typeof userDID !== 'string' || !userDID) {
     return res.status(400).json({ error: `userDID is required` })
   }
-  const returnTo = req.query.returnTo || `https://${destinationHost}/`
+  const returnTo = req.query.returnTo || `https://${clientHost}/`
 
   let didHost, username
   {
@@ -414,21 +461,21 @@ routes.get('/login/to/:host', async (req, res, next) => {
     return res.status(400).render('pages/error', {
       title: 'ERROR: Wrong user',
       message: (
-        `You are trying to login to "${destinationHost}" as @${user.username} but ` +
+        `You are trying to login to "${clientHost}" as @${user.username} but ` +
         `you are currently logged in as @${req.user.username}.\n\n` +
         `If you own @${user.username}, please login and login as them first.`
       )
     })
   }
 
-  res.render('pages/signInToAnotherApp', { destinationHost, returnTo })
+  res.render('pages/signInToAnotherApp', { clientHost, returnTo })
 })
 
 
 /**
  * receive result of redirecting to auth provider
  *
- * this is a destination app route
+ * this is a client app route
  *
  * This is the route that the above route's form posts to
  *
@@ -436,12 +483,12 @@ routes.get('/login/to/:host', async (req, res, next) => {
  * it posts here
  */
 routes.post('/login/to', async (req, res, next) => {
-  let { destinationHost, returnTo, accept, duration, durationUnit } = req.body
-  const destinationHostDID = `did:web:${destinationHost}`
-  const destinationHostDIDDocument = await resolveDIDDocument(destinationHostDID)
-  debug({ destinationHostDID })
-  debug({ destinationHostDIDDocument })
-  returnTo = new URL(returnTo || `https://${destinationHost}`)
+  let { clientHost, returnTo, accept, duration, durationUnit } = req.body
+  const clientHostDID = `did:web:${clientHost}`
+  const clientHostDIDDocument = await resolveDIDDocument(clientHostDID)
+  debug({ clientHostDID })
+  debug({ clientHostDIDDocument })
+  returnTo = new URL(returnTo || `https://${clientHost}`)
 
   if (accept) {
     const jwt = await createSignedJWT({
@@ -453,7 +500,7 @@ routes.post('/login/to', async (req, res, next) => {
          */
       },
       issuer: req.app.did,
-      audience: destinationHostDID,
+      audience: clientHostDID,
       subject: req.user.did,
       expirationTime: `${duration}${durationUnit}`,
     })
@@ -462,7 +509,7 @@ routes.post('/login/to', async (req, res, next) => {
   }else{
     returnTo.searchParams.set('rejected', '1')
   }
-  debug(`[auth provider] redirecting back to destination app at ${returnTo}`)
+  debug(`[auth provider] redirecting back to client app at ${returnTo}`)
   res.redirect(returnTo)
 })
 
@@ -470,10 +517,10 @@ routes.post('/login/to', async (req, res, next) => {
 /**
  * complete DID Web Auth sign in
  *
- * this is a destination app route
+ * this is a client app route
  *
  * the JWT from the above route is sent from the auth
- * provider to this route at the destination app
+ * provider to this route at the client app
  *
  * the JWT should be signed by the auth provider and
  * contain claims we need to access any auth provider
@@ -499,7 +546,7 @@ routes.get('/login/from/:host', async (req, res, next) => {
     profileURL: jwtData.profileURL,
   })
   await req.login(user.id)
-  res.redirect('/') // TODO pass around a destination url
+  res.redirect('/') // TODO pass around a client url
 })
 
 

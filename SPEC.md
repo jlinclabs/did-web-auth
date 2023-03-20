@@ -61,13 +61,14 @@ This specification is designed for use with HTTP ([RFC2616][http-spec]). The
 use of The DID Web Authorization Framework over any protocol other than HTTP
 is out of scope.
 
-### Specs
+## Specs
 
 This SPEC builds upon and inherits the terminology from the following spec:
 
 - HTTP - https://www.rfc-editor.org/rfc/rfc2616
 - SMPT - https://www.rfc-editor.org/rfc/rfc2821
 - DID - https://www.w3.org/TR/did-core/
+- well-known DIDs - https://identity.foundation/.well-known/resources/did-configuration/
 - DID Web - https://w3c-ccg.github.io/did-method-web/
 - JWT - https://www.rfc-editor.org/rfc/rfc7519
 - Verifiable Credentials Data Model v1.1 -
@@ -76,7 +77,7 @@ This SPEC builds upon and inherits the terminology from the following spec:
   https://identity.foundation/.well-known/resources/did-configuration/
 
 
-### Notational Conventions
+## Notational Conventions
 
    The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
    "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
@@ -97,113 +98,40 @@ This SPEC builds upon and inherits the terminology from the following spec:
    are case sensitive.
 
 
-### Terms
+## Terms
 
-#### User
+### User
 
 The human interacting with a device.
 
-#### Auth Provider
+### Auth Provider
 
 An HTTP Web application that:
 - hosts users with did:web DIDs
 - serves did documents
 - exposes the [auth provider endpoints](#auth-provider-endpoints)
 
-#### Client App
+### Client App
 
+An HTTP Web applications that wants to allow users to login with an identifier
+hosted at a DID Web Auth Provider. The client does not need to be registered
+with the Auth Provider to request a JWT. It must expose the
+[client app endpoints](#client-app-endpoints)
 
-
-#### Hosted Identifier
+### Distributed Identifier
 
 A [DID][did-spec] hosted at a single http domain, using the [did:web method]
 [did-web-spec], representing an individual human, organization or app. It
 can be granted revocable rights via verifiable credentials. It can also have
 aliases.
 
-#### Client
+Examples:
 
-Any application making protected resource requests on behalf of an
-identifier. When a user signs into an application or website using an
-identifier the app or website is the client.
-
-#### Identifier Host
-
-Any web application that complies with this spec qualifies as an Identifier
-Host.
-
-#### Credential
-
-see Verifiable Credentials
-
-#### Authorization Grant Token
-
-A one-time use token used to grant Client an access token
-
-#### Access Token
-
-A [JSON Web Token][jwt-spec] used to gain limited access to protected HTTP
-resources.
-
-
-
-
-
-## Identifier Formats
-
-A hosted identifier is a [DID][did-spec] using the [did:web method]
-[did-web-spec] at a specific host domain. See the [did:web spec]
-[did-web-spec] for details on formatting and encoding.
-
-A hosted identifier can be presented in several formats:
-
-##### DID Web
-
-`did:web:example.com:dids:z6MkhvoSQhPDNwotybwX9o2scoSvkx5Syem3GiM9FV8h5YXG`
-
-##### DID Web via alias
-
-`did:web:example.com:dids:alice`
-
-##### Email via alias
-
-`alice@example.com`
-
-
-Identifiers are resolved according to the [did:web SPEC][did-web-spec].
-According to the spec the above examples resolve to the following urls:
-
-```
-did:web:example.com:dids:z6MkhvoSQhPDNwotybwX9o2scoSvkx5Syem3GiM9FV8h5YXG
-https://example.com/dids/z6MkhvoSQhPDNwotybwX9o2scoSvkx5Syem3GiM9FV8h5YXG/did.json
-
-did:web:example.com:dids:alice
-https://example.com/dids/alice/did.json
-```
-
-##### Aliases
-
-Aliases allow for identifiers that are both more readable and shorter than
-an encoded public key. Aliases do not need to be universally unique themselves,
-only universally unique when paired with the http domain. Aliases
-must be a valid [SMTP local-part][smtp-spec] and cannot contain the characters
-`:` or `/`.
-
-Alias must also be present in the DID Document. *NOTE: this requirement need
-more specification*
-
-
-##### Email Address Form
-
-An alternate, more familiar feeling, format.
-
-```
-# Email
-z6MkhvoSQhPDNwotybwX9o2scoSvkx5Syem3GiM9FV8h5YXG@example.com
-
-# Email using an alias
-alice@example.com
-```
+| Identifier                  | Format | Resolves to URL                          |
+|-----------------------------|--------|------------------------------------------|
+| did:web:example.com         | did    | https://example.com/.well-known/did.json |
+| did:web:example.com:u:alice | did    | https://example.com/dids/alice/did.json  |
+| alice@example.com           | email  | https://example.com/dids/alice/did.json  |
 
 Using an email address format allows for a backward compatability feel when
 using a unique identifier to authenticate into applications on the web.
@@ -213,10 +141,25 @@ Framework should detect if a provided email address represents a
 decentralized identifier. For example when user provides
 `alice@example.com` as their login, the client applications should
 assume it could represent `did:web:example.com:dids:alice` and attempt to
-communicate with `example.com` as if it was a compliant identifier host.
+communicate with `example.com` as if it was a compliant auth provider.
 
 For more on this see
-[Validating Identifier Hosts](#validating-identifier-hosts)
+[Validating Auth Providers](#validating-auth-providers)
+
+
+### Credential
+
+see [Verifiable Credentials](https://www.w3.org/TR/vc-data-model/)
+
+### Authorization Grant Token
+
+A one-time use token used to grant Client an access token
+
+### Access Token
+
+A [JSON Web Token][jwt-spec] used to gain limited access to protected HTTP
+resources.
+
 
 
 ## Hosting Identifiers
@@ -442,14 +385,36 @@ endpoint*
 
 
 
-## Validating Identifier Hosts
+## Validating Auth Providers
 
-Client applications should allow authentication via any valid identifier
-host. When a client application is given an identifier it should attempt to
-communicate with the http host as if it complied with this spec.
+Client applications should allow authentication via any valid auth provider.
+When a client application is given an identifier it should attempt to
+communicate with the auth provider over https.
+
+Steps:
+
+1. resolve the auth providers DID according to [the did:web spec](https://w3c-ccg.github.io/did-method-web/#read-resolve)
+2. request the auth provider's well known did document (defined in the did:web spec)
+3. extract the signing key pairs
+
+https://identity.foundation/.well-known/resources/did-configuration/
+
+```
+MOVE ME TO AUTH STEPS SECTION
+
+3. request the user's did document
+4. find all matching services of type `DIDWebAuth`
+5. Repeat the remaining steps for each matching service, in the order listed in the user's did document.
+    1. create an [Authentication Request](#authentication-request)
+    2. post it to the auth provider serviceEndpoint url
+    3. verify the
+```
 
 
-*TODO: add a link to a set of free tools to help test your domains compliance*
+<!--
+TODO: add a link to a set of free tools to help test your domains compliance*
+a link to the lighthouse app would go here
+-->
 
 
 ## Credentials

@@ -1,5 +1,6 @@
 import crypto from 'crypto'
 import * as jose from 'jose'
+import { base58btc } from 'multiformats/bases/base58'
 
 const PublicKeyObject = crypto.generateKeyPairSync('ed25519').publicKey.constructor
 const PrivateKeyObject = crypto.generateKeyPairSync('ed25519').privateKey.constructor
@@ -37,6 +38,9 @@ export async function keyPairFromJWK(privateJWK){
     publicKey: publicKeyFromJWK(publicJWK),
     privateKey: crypto.createPrivateKey({ format: 'jwk', key: privateJWK }),
   }
+}
+export function signingKeyPairToDIDKey(signingKeyPair){
+  return `did:key${base58btc.encode(publicKeyToBuffer(signingKeyPair.publicKey))}`
 }
 
 export function publicKeyToBuffer(publicKey){

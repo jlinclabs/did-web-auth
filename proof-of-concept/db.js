@@ -31,7 +31,9 @@ const db = {
     const encryptingKeyPairs = []
     // convert them to keypair object
     for (const key of keys){
+      console.log({ key })
       const keyPair = await keyPairFromJWK(JSON.parse(key.jwk))
+      keyPair.createdAt = new Date(key.created_at)
       if (key.type === 'signing') signingKeyPairs.push(keyPair)
       if (key.type === 'encrypting') encryptingKeyPairs.push(keyPair)
     }
@@ -52,11 +54,12 @@ const db = {
     if (keyPairsToInsert.length > 0){
       debug('creating app crypto key pairs')
       await this.knex('crypto_keys').insert(
-        keyPairsToInsert.map(async ([type, jwk]) => {
+        keyPairsToInsert.map(([type, jwk]) => {
           return {
             public_key: jwk.x,
             jwk: JSON.stringify(jwk),
             type,
+            created_at: new Date,
           }
         })
       )
@@ -102,12 +105,14 @@ const db = {
           public_key: signingJWK.x,
           jwk: JSON.stringify(signingJWK),
           type: 'signing',
+          created_at: new Date,
         },
         {
           user_id: userId,
           public_key: encryptingJWK.x,
           jwk: JSON.stringify(encryptingJWK),
           type: 'encrypting',
+          created_at: new Date,
         },
       ])
 
