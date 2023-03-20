@@ -60,12 +60,16 @@ routes.get('/.well-known/did-configuration.json', async (req, res, next) => {
   //   }
   // })
 
+  /**
+   * NOTE: This is a temporary and invalid placeholder until I can fix a
+   * bug in the above code
+   */
   const verifiableCredential = {
     "@context": [
       "https://www.w3.org/2018/credentials/v1",
       "https://identity.foundation/.well-known/did-configuration/v1"
     ],
-    "issuer": `${did}`,
+    "issuer": `${didKey}`,
     "issuanceDate": issuanceDate,
     "expirationDate": "2025-12-04T14:08:28-06:00",
     "type": [
@@ -73,7 +77,7 @@ routes.get('/.well-known/did-configuration.json', async (req, res, next) => {
       "DomainLinkageCredential"
     ],
     "credentialSubject": {
-      "id": `${did}`,
+      "id": `${didWeb}`,
       "origin": req.app.origin,
     },
     "proof": {
@@ -81,9 +85,10 @@ routes.get('/.well-known/did-configuration.json', async (req, res, next) => {
       "created": issuanceDate,
       "jws": "eyJhbGciOiJFZERTQSIsImI2NCI6ZmFsc2UsImNyaXQiOlsiYjY0Il19..D0eDhglCMEjxDV9f_SNxsuU-r3ZB9GR4vaM9TYbyV7yzs1WfdUyYO8rFZdedHbwQafYy8YOpJ1iJlkSmB4JaDQ",
       "proofPurpose": "assertionMethod",
-      "verificationMethod": `${did}#z6MkoTHsgNNrby8JzCNQ1iRLyW5QQ6R8Xuu6AA8igGrMVPUM`,
+      "verificationMethod": `${didKey}#z6MkoTHsgNNrby8JzCNQ1iRLyW5QQ6R8Xuu6AA8igGrMVPUM`,
     }
   }
+
   res.json({
     "@context": "https://identity.foundation/.well-known/did-configuration/v1",
     "linked_dids": [
