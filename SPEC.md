@@ -103,6 +103,17 @@ This SPEC builds upon and inherits the terminology from the following spec:
 
 The human interacting with a device.
 
+#### Auth Provider
+
+An HTTP Web application that:
+- hosts users with did:web DIDs
+- serves did documents
+- exposes the [auth provider endpoints](#auth-provider-endpoints)
+
+#### Client App
+
+
+
 #### Hosted Identifier
 
 A [DID][did-spec] hosted at a single http domain, using the [did:web method]
@@ -378,12 +389,24 @@ sequenceDiagram
    * *what to do here if the host is invalid is outside the scope of this
      document but a fallback to a more classic form of authentication might
      be appropriate here.*
-3. The app uses one of the 4 authentication strategies to request a session
+3. The app uses one of the 4 authentication methods to request a session
    token.
 4. Success. The app can now use your session token to gain limited access to
    other api endpoints on your identifier host.
 
-#### Authentication Strategies
+#### Authentication Methods
+
+##### Browser Redirect
+
+*This strategy only possible if user is authenticating to a website in a
+browser*
+
+1. The app redirects the user to their identifier host's authentication
+   endpoint using query params to define the scopes for the requested session
+2. the user is propmpted to confirm the details of the session request
+3. the user approves the session and is redirected back to the app
+
+
 
 ##### Magic Link
 
@@ -406,16 +429,6 @@ endpoint*
 2. The app then instructs the user to follow the link sent to their identifier
    host
 3. The user follows the link sent to their identifier host
-
-##### Redirect Dance
-
-*This strategy only possible if user is authenticating to a website in a
-browser*
-
-1. The app redirects the user to their identifier host's authentication
-   endpoint using query params to define the scopes for the requested session
-2. the user is propmpted to confirm the details of the session request
-3. the user approves the session and is redirected back to the app
 
 
 ##### Identifier Host Prompt

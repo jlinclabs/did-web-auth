@@ -426,6 +426,10 @@ routes.get('/login/to/:host', async (req, res, next) => {
 
 
 /**
+ * receive result of redirecting to auth provider
+ *
+ * this is a destination app route
+ *
  * This is the route that the above route's form posts to
  *
  * Then the user accepts or rejects the request to login
@@ -466,7 +470,7 @@ routes.post('/login/to', async (req, res, next) => {
 /**
  * complete DID Web Auth sign in
  *
- * this is a destination app routes
+ * this is a destination app route
  *
  * the JWT from the above route is sent from the auth
  * provider to this route at the destination app
