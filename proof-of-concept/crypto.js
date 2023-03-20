@@ -93,6 +93,9 @@ export async function verifyJWS(jws, publicKeys){
   if (lastError) throw lastError
 }
 
+/**
+ * create a JWE
+ */
 export async function createJWE({ payload, recipients }){
   const proto = new jose.GeneralEncrypt(
     new TextEncoder().encode(JSON.stringify(payload))
@@ -105,19 +108,25 @@ export async function createJWE({ payload, recipients }){
   return await proto.encrypt()
 }
 
+/**
+ * decrypt a JWE
+ */
 export async function verifyJWE(jwe, privateKey){
   const { plaintext } = await jose.generalDecrypt(jwe, privateKey)
-  // console.log({ protectedHeader, additionalAuthenticatedData })
   return JSON.parse(plaintext)
 }
 
 /**
- * Ok this is weird, we need to cut this secret down to 32 bits so we just take the first 32 bytes
+ * truncate Diffie Hellman derived secret to 32 bytes as
+ * expected by jose.SignJWT
  */
 function truncateSecret(secret){
   return secret.slice(0, 32)
 }
 
+/**
+ * create a signed JWT
+ */
 export async function createSignedJWT({
   privateKey, payload, issuer, audience, subject, expirationTime = '4weeks',
 }){
@@ -132,9 +141,10 @@ export async function createSignedJWT({
   return signedJWT
 }
 
+/**
+ * verify a signed JWT
+ */
 export async function verifySignedJWT(jwt, publicKeys){
-  // const { payload, protectedHeader } = await jose.jwtVerify(jwt, publicKey)
-  // return payload
   if (!Array.isArray(publicKeys)) publicKeys = [publicKeys]
   let lastError, result
   for (const publicKey of publicKeys){
@@ -151,6 +161,9 @@ export async function verifySignedJWT(jwt, publicKeys){
   if (lastError) throw lastError
 }
 
+/**
+ * encrypt a JWT containing a JWS
+ */
 export async function createEncryptedSignedJWT({
   payload, issuer, audience, subject, expirationTime = '1month', secret,
   signWith
@@ -170,11 +183,10 @@ export async function createEncryptedSignedJWT({
   proto.setSubject(subject)
   proto.setExpirationTime(expirationTime)
   return await proto.encrypt(truncateSecret(secret))
-  // if (secret) return await proto.encrypt(truncateSecret(secret))
-  // if (publicKey) return await proto.encrypt(publicKey)
-  // return jwt
 }
-
+/**
+ * Decrypt a JWT containing a JWS
+ */
 export async function decryptSignedJWT({
   jwt, secret, publicKey, issuer, audience,
 }){
@@ -228,7 +240,6 @@ export function acceptDiffieHellman({ prime, generator, publicKey }){
       publicKey: ourPublicKey.toString('base64url'),
     }
   }
-  // acceptor.computeSecret(publicKey)
 }
 
 /**
