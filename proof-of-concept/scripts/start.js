@@ -8,7 +8,7 @@ const { host, port } = yargs(hideBin(process.argv))
   .usage('Usage: $0 --port 3001 --host app.test')
   .option('host', {
     alias: 'h',
-    type: 'number',
+    type: 'string',
     description: 'host',
     default: process.env.HOST,
   })
@@ -26,7 +26,7 @@ const bail = message => {
 }
 
 if (!host || typeof host !== 'string') bail(`host is required`)
-if (!port || typeof port !== 'string') bail(`port is required`)
+if (!port || typeof port !== 'number') bail(`port is required`)
 app
   .set('port', port)
   .set('host', host)
