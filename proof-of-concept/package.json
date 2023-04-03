@@ -6,6 +6,7 @@
   "author": "Jared Grippe <jared@jlinc.com>",
   "license": "MIT",
   "scripts": {
+    "start": "./scripts/start.js",
     "lint": "eslint $(find . | grep -vE 'node_modules|coverage' | grep -E '.*\\.(m|c)*js$')",
     "test": "brittle --coverage test/*.test.js"
   },
