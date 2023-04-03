@@ -426,6 +426,8 @@ routes.post('/auth/did', async (req, res, next) => {
     redirectTo: redirectTo.toString(),
     userDID,
     requestId,
+    // TODO add a JWS of the requestId signed by a signing key in the users did
+    // signature: jws
   }
   const authenticationResponse = await createJWS({
     payload,
@@ -459,7 +461,7 @@ routes.get('/login/to/:host', async (req, res, next) => {
   const returnTo = req.query.returnTo || `https://${clientHost}/`
 
   let didHost, username
-  {
+  {// TODO replace this with the helper methods parseDIDWeb ???
     const matches = userDID.match(/^did:web:([^:]+):u:([^:]+)$/)
     if (matches) ([, didHost, username] = matches)
   }
@@ -518,10 +520,14 @@ routes.post('/login/to', async (req, res, next) => {
       privateKey: req.app.signingKeyPair.privateKey,
       payload: {
         profileURL: `${req.app.origin}/@${req.user.username}/profile.json`,
+
+        // maybe add a proof here of the users signing keys signing
+
         /**
          * NOTE: more data can be shared here
          */
       },
+      // TODO add more claims https://www.iana.org/assignments/jwt/jwt.xhtml
       issuer: req.app.did,
       audience: clientHostDID,
       subject: req.user.did,

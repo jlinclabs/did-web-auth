@@ -8,7 +8,11 @@ This is a work in progress
 
 - [ ] update auth flow diagram
 - [ ] define error codes for JSON responses
-
+- [ ] read and integrate with
+  - https://github.com/WebOfTrustInfo/rwot6-santabarbara/blob/master/final-documents/did-auth.md
+  - https://github.com/decentralized-identity/did-auth-jose/blob/master/docs/OIDCAuthentication.md#enroll-beta
+  - selective disclosure request
+    - https://github.com/uport-project/specs/blob/develop/messages/sharereq.md
 
 ## Abstract
 
@@ -170,6 +174,7 @@ Auth providers must respond to the following HTTP endpoints:
 |--------------------------------------------------------|-
 | [Domain DID Document](#domain-did-document-endpoint)   | `/.well-known/did.json`
 | [Domain DID Conf](#domain-did-conf-endpoint)           | `/.well-known/did-configuration.json`
+| [Sing in Route]                                        |
 | [Sign in Completion](#sign-in-completion-endpoint)     | defined by the `returnTo` param sent the Auth Providers [Sign in Confirmation endpoint](#sign-in-confirmation-endpoint)
 
 
