@@ -491,7 +491,7 @@ routes.get('/login/to/:host', async (req, res, next) => {
     })
   }
 
-  res.render('pages/signInToAnotherApp', { clientHost, returnTo })
+  res.render('pages/signinToAnotherApp', { clientHost, returnTo })
 })
 
 
