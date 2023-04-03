@@ -1,0 +1,100 @@
+<div class="text-center my-6">
+  <h1 class="text-3xl font-semibold">DID Auth Proof of Concept</h1>
+</div>
+{{#if user}}
+  <div class="text-center my-6">
+    <h2 class="text-xl font-semibold">You are logged in as {{usernameToEmail user.username}}</h2>
+
+    {{#unless userIsLocal}}
+      <div
+        class="my-6 text-4xl"
+      >
+        You've logged in via DID Web Auth! :D
+      </div>
+    {{/unless}}
+
+    <div class="my-2">
+      Your account lives on
+      {{#if userIsLocal}}
+        this website.
+        {{!-- <p>This website <b>{{app.origin}}</b> is where your main user account lives.</p>
+        <p>In other words <b>{{app.origin}}</b> is your authentication provider.</p> --}}
+      {{else}}
+        <b>https://{{user.authentication_host}}</b>
+        {{!-- <p>Another website <b>https://{{user.authentication_host}}</b> is where your main user account lives.</p>
+        <p>In other words <b>{{app.origin}}</b> is your authentication provider.</p> --}}
+      {{/if}}
+    </div>
+
+    <p class="my-2">
+      <span class="select-none">You can login to any other site using<span>&nbsp</span></span>
+      <input
+        class="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+        type="text"
+        value="{{usernameToEmail user.username}}"
+        readonly
+      />
+    </p>
+    <p>
+      Here is your <a class="text-blue-500 hover:text-blue-800" href="{{didToDidDocumentURL user.did}}">DID Document</a>
+    </p>
+    <div class="my-6 max-w-sm mx-auto">
+      {{#if userIsLocal}}
+        <h3 class="text-xl font-semibold">Update your profile</h3>
+        {{> profileEditForm }}
+      {{else}}
+        <p>You can edit your profile on
+        <a
+          href="https://{{user.authentication_host}}"
+          class="text-blue-500 hover:text-blue-800"
+        ><b>https://{{user.authentication_host}}</b></a>
+      {{/if}}
+    </div>
+  </div>
+
+
+  {{#if userIsRemote}}
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+  <script>
+    function makeConfetti(){
+      function randomInRange(min, max) {
+        return Math.random() * (max - min) + min;
+      }
+      requestAnimationFrame(function(){
+        confetti({
+          angle: 60, // randomInRange(55, 125),
+          spread: randomInRange(50, 70),
+          particleCount: randomInRange(50, 100),
+          origin: { x: 0, y: 1 }
+        })
+        confetti({
+          angle: 90, // randomInRange(55, 125),
+          spread: randomInRange(50, 70),
+          particleCount: randomInRange(50, 100),
+          origin: { x: 1, y: 1 }
+        })
+        setTimeout(makeConfetti, randomInRange(200, 1000))
+      })
+    }
+    makeConfetti()
+    // setInterval(makeConfetti, 500)
+  </script>
+  {{/if}}
+{{else}}
+  <div style="display: flex; justify-content: space-around;">
+    <div>
+      <h3 class="text-xl font-semibold">Sign up</h3>
+      <p class="w-full max-w-xs my-2 text-sm italic">
+        If you do not have account yet:
+      </p>
+      {{> signupForm }}
+    </div>
+    <div>
+      <h3 class="text-xl font-semibold">Sign in</h3>
+      <p class="w-full max-w-xs my-2 text-sm italic">
+        If you already have an account here
+      </p>
+      {{> signinForm }}
+    </div>
+  </div>
+{{/if}}
