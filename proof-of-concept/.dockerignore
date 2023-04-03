@@ -1,0 +1,8 @@
+/node_modules
+.DS_Store
+.idea
+*.env*
+.git
+.parcel-cache
+/tmp/*
+/uploads/*
