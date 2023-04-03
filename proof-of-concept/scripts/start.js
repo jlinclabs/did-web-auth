@@ -16,7 +16,7 @@ const { host, port } = yargs(hideBin(process.argv))
     alias: 'p',
     type: 'number',
     description: 'port',
-    default: process.env.PORT,
+    default: process.env.PORT && parseInt(process.env.PORT, 10),
   })
   .parse()
 
