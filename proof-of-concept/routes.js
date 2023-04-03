@@ -230,9 +230,9 @@ routes.post('/signin', async (req, res, next) => {
     debug('attempting DID Web Auth with', email)
     try{
       let redirectUrl = await loginWithDIDWebAuth({
-        ourHostDID: req.app.did,
-        ourHostSigningKeyPair: req.app.signingKeyPair,
-        // ourHostEncryptingKeyPair: req.app.encryptingKeyPair,
+        clientDID: req.app.did,
+        clientSigningKeyPair: req.app.signingKeyPair,
+        // clientEncryptingKeyPair: req.app.encryptingKeyPair,
         username: emailUsername,
         authProviderHost: emailHost,
       })
@@ -267,8 +267,8 @@ routes.post('/signin', async (req, res, next) => {
  * Code like this might be wrapped in a shared library
  */
 async function loginWithDIDWebAuth({
-  ourHostDID, ourHostSigningKeyPair,
-  // ourHostEncryptingKeyPair,
+  clientDID, clientSigningKeyPair,
+  // clientEncryptingKeyPair,
   username, authProviderHost,
 }){
   const authProviderDID = `did:web:${authProviderHost}`
@@ -307,7 +307,7 @@ async function loginWithDIDWebAuth({
       requestId: createNonce(),
     },
     signers: [
-      ourHostSigningKeyPair.privateKey
+      clientSigningKeyPair.privateKey
     ]
   })
   const response = await fetch(url, {
@@ -319,7 +319,7 @@ async function loginWithDIDWebAuth({
       // '@context': [
       //   '/tbd/host-to-host-message'
       // ],
-      clientDID: ourHostDID,
+      clientDID: clientDID,
       authenticationRequest
     })
   })
