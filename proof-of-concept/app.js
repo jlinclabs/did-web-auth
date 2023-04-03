@@ -1,3 +1,4 @@
+import crypto from 'crypto'
 import express from 'express'
 import bodyParser from 'body-parser'
 import { create } from 'express-handlebars'
@@ -57,7 +58,8 @@ app.start = async function start(){
   app.signingKeyPair = cryptoKeyPairs.signingKeyPairs[0]
   app.encryptingKeyPair = cryptoKeyPairs.encryptingKeyPairs[0]
 
-  const appColor = new toColor(`${host}:${port}${port}${port}`).getColor().hsl.formatted
+  const colorRand = crypto.createHash('sha256').update(`${host}:${port}${port}${port}`).digest('hex')
+  const appColor = new toColor(colorRand).getColor().hsl.formatted
 
   app.locals.app = {
     host: app.host,
