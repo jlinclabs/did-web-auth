@@ -134,6 +134,204 @@ For more on this see
 see [Verifiable Credentials](https://www.w3.org/TR/vc-data-model/)
 
 
+<!-- /# TERMS -->
+
+
+
+
+
+## Authentication Flow
+
+
+### Flow
+
+Roles:
+[User](#user),
+[Client App](#client-app),
+[Auth Provider](#auth-provider)
+
+### Initial Flow
+
+```mermaid
+sequenceDiagram
+  actor U as User
+  participant C as Client App
+  participant A as Auth Provider
+  Note right of U: 1. user visits new app and submits signup form
+  U->>+C: HTTP POST with did email
+  Note right of C: 2. check local users table for email
+  Note right of C: 3. extract auth provider domain from email
+  Note right of C: 4. validate the auth provider
+  C-->>+A: request auth provider's did document
+  A-->>-C: 
+  Note right of C: 5. validate the user did document
+  C-->>+A: request user's did document
+  A-->>-C: 
+  Note right of C: 6. extract the users did-web-auth service endpoint(s)
+  Note right of C: 7. POST authentication request
+  C-->>+A: request sign in via HTTP POST to DID Auth Endpoint
+  Note right of A: 8. validate client app
+  A-->>+C: get client app DID Document
+  C-->>-A: 
+  Note right of A: 9. validate the authentication request
+  Note right of A: 10. choose redirect strategy
+  A-->>-C: respond with next signing step
+  Note right of C: 11. present one of the offered strategies
+  C->>-U: present the next step to the user
+```
+
+
+1. User visits a new app and gives them their did in email address form
+2. The client app attempts to use the email to login the user
+   * if the client app supports email based authentication it should check its local user collection first before attempting did-web-auth
+   * Extract the username and hostname from the email
+   * Check if the domain looks like a [valid DID Web identifier host](#validating-auth-providers).
+   * request the
+   * Post a authentication request to the auth provider
+3. Extract auth provider domain from email
+4. Validate the Auth Provider
+5. Validate the user did document
+6. Extract the users did-web-auth service endpoint(s)
+7. POST authentication request to Auth Provider
+8. Validate Client App
+9. Validate the authentication request
+10. choose redirect strategy
+11. present one of the offered strategies
+
+
+### Authentication Strategy Flows
+
+
+#### Browser Redirect
+
+*This strategy only possible if user is authenticating to a website in a
+browser*
+
+*…continues from [Initial Flow](#initial-flow)*
+
+```mermaid
+sequenceDiagram
+  actor U as User
+  participant C as Client App
+  participant A as Auth Provider
+  U->>+C: [Initial Flow]
+  C->>+A: client request auth from auth provider
+  Note right of A: 1. auth provider offered redirect strategy
+  A->>-C: provider responds with redirect strategy
+  Note right of C: 2. Client App redirects the user
+  C->>-U: HTTP redirect
+  U->>+A: user is redirected to auth provider via HTTP GET
+  Note right of A: 3. validate data in url query params
+  Note right of A: 4. validate current user matches login request
+  A->>-U: render authentication request approval page
+  Note right of U: 5. user approves login request
+  U->>+A: user approves login request
+  Note right of A: 6. generate a new authentication JWT
+  A->>-U: redirects user back to client app with JWT as query param
+  U->>+C: user is redirected back to client app
+  Note right of C: 7. validate and unpack JWT
+  Note right of C: 8. create new local user record
+  C->>+U: user is now logged into the client app
+```
+
+1. auth provider offered redirect strategy
+2. Client App redirects the user
+3. Auth Provider validates the data in url query params
+4. Auth Provider ensures the current user matches login request
+5. User approves login request by using some user interface
+6. Auth Provider generates a new authentication JWT in reply to the Client App
+7. Client App unpacks and validates the JSON Web Token
+8. Client App creates a new user record if needed, stores the JWT and logs in the user
+
+#### Magic Link
+
+*This strategy only possible if the destination app has a public http
+endpoint*
+
+
+*…continues from [Initial Flow](#initial-flow)*
+
+```mermaid
+sequenceDiagram
+  actor U as User
+  participant C as Client App
+  participant A as Auth Provider
+  U->>+C: [Initial Flow]
+  C->>+A: client request auth from auth provider
+  Note right of A: 1. chooses magic link strategy
+  Note right of A: 2. send user the magic link
+  A->>-C: provider responds with magic link strategy
+  Note right of C: 3. prompts user to go click the link
+  C->>-U: 
+  Note right of U: 4. user receives notification from Auth Provider
+  U->>+A: User clicks the link from the Auth Provider
+  Note right of A: 5. validated the link payload
+  Note right of A: 6. creates a new session for the user
+  Note right of A: 7. post the new session to the Client App
+  A->>+C: 
+  Note right of C: 8. create and login the user
+  C->>U: reload the page as logged in
+  Note right of U: 9. the tab is now logged in
+  C->>-A: 
+  A->>-U: render success page directing user back to original tab
+  Note right of U: 10. the second browser tab shows success
+```
+
+1. Auth Provider chooses magic link strategy
+2. Auth Provider send user the magic link
+3. Client App prompts user to go click the link sent to them by their Auth Provider 
+4. User receives notification from Auth Provider
+5. Auth Provider validates the payload within the link the user clicked
+6. Auth Provider creates a new session for the user
+7. Auth Provider HTTP posts the new session to the Client App
+8. Client App creates and logs in the user
+9. Client App re-renders the original the tab and shows the user as now logged in
+10. The second browser tab (from the auth provider login link) now shows success and instructs the user to return to their orignial tab.
+
+
+
+
+#### Secret Code
+
+*This strategy the only strategy available to *
+
+*…continues from [Initial Flow](#initial-flow)*
+
+
+```mermaid
+sequenceDiagram
+  actor U as User
+  participant C as Client App
+  participant A as Auth Provider
+  U->>+C: [Initial Flow]
+  C-->>+A: request auth from auth provider
+  Note right of A: 1. chooses magic code strategy
+  Note right of A: 2. creates a new magic code
+  A-->>-C: 
+  Note right of C: 3. prompts the user for the secret code
+  C->>-U: 
+  A->>U: Auth provider notifies the user of their login code
+  Note right of U: 4. receives the notification with secret code
+  Note right of U: 5. enters the secret code
+  U->>+C: 
+  Note right of C: 6. pass code onto auth provider
+  C-->>+A: 
+  Note right of A: 7. validate secret code
+  Note right of A: 8. create a new session
+  A-->>-C: 
+  Note right of C: 9. create and login new user
+  C->>-U: render page as logged in
+```
+
+1. Auth Provider chooses the magic code strategy
+2. Auth Provider creates a new one-time magic code and persists it
+3. Client App prompts the user for the secret code
+4. User receives the notification with secret code
+5. User enters the secret code
+6. Client App passes the secret code onto the Auth Provider
+7. Auth Provider validates the secret code
+8. Auth Provider creates a new session and passes it back to the Client App
+9. Client App creates a new user, logs them in and renders a success page
 
 
 
@@ -170,6 +368,7 @@ Auth providers must respond to the following HTTP endpoints:
 
 
 
+
 ## Endpoints
 
 
@@ -194,9 +393,9 @@ DID Document owns this domain.
 
 Must contain a an entry in the services sections like this:
 
-```json
+```js
 {
-  "service: [
+  "service": [
     {
       "type": "DIDWebAuth",
       "serviceEndpoint": "https://example-auth-provider.com/auth/did"
@@ -217,8 +416,8 @@ This endpoint is called with HTTP method POST
 
 The post body should be `application/json`
 
-```json
-// example
+example
+```js
 {
   "clientDID": "did:web:example-client.com", // Client App's host DID
   "authenticationRequest": { // An Authentication Request JWS
@@ -230,10 +429,10 @@ The post body should be `application/json`
 
 The Authentication Request JWS should contain
 
-```json
+```js
 // example
 {
-  "@context": [ '/tbd/app-login-request' ],
+  "@context": [ "/tbd/app-login-request" ],
   "userDID": "did:web:example.com:u:alice",
   "now": 1679337797475, // Date.now() / seconds from epoch
   "requestId": "EvgbfZevI5MEL31ZUbtpPw" // a nonce
@@ -261,7 +460,7 @@ an `authenticationResponse` JWS.
 
 #### Authentication Response
 
-```json
+```js
 //example
 {
   "authenticationResponse": { // An Authentication Response JWS
@@ -284,7 +483,7 @@ The Auth Provider can use any pathname they like but the `redirectTo` URL
 must be at the same origin. The url can also include any query params
 needed to to ensure the right user is properly identified after redirection.
 
-```json
+```js
 // Example Authentication Response
 {
   "redirectTo": "https://example-auth-provider.com/login/to/example-client.com",
@@ -347,177 +546,6 @@ This endpoint can be at any pathname the client application desires.
 
 
 
-
-
-## Authentication Flow
-
-[[see roles]]
-
-### Flow
-
-#### Roles
-
- - User - a human logging in
- - IdHost - the website that hosts the identifier being used to authenticate
- - App - the website being logged into
-
-
-### Initial Flow
-
-```mermaid
-sequenceDiagram
-  actor U as User
-  participant C as Client App
-  participant A as Auth Provider
-  Note right of U: 1. user visits new app and submits signup form
-  U->>+C: HTTP POST with did email
-  Note right of C: 2. check local users table for email
-  Note right of C: 3. extract auth provider domain from email
-  Note right of C: 4. validate the auth provider
-  C-->>+A: request auth provider's did document
-  A-->>-C: 
-  Note right of C: 5. validate the user did document
-  C-->>+A: request user's did document
-  A-->>-C: 
-  Note right of C: 6. extract the users did-web-auth service endpoint(s)
-  Note right of C: 7. POST authentication request
-  C-->>+A: request sign in via HTTP POST to DID Auth Endpoint
-  Note right of A: 8. validate client app
-  A-->>+C: get client app DID Document
-  C-->>-A: 
-  Note right of A: 9. validate the authentication request
-  Note right of A: 10. choose redirect strategy
-  A-->>-C: respond with next signing step
-  Note right of C: 11. present one of the offered strategies
-  C->>-U: present the next step to the user
-```
-
-
-1. User visits a new app and gives them their did in email address form
-2. The client app attempts to use the email to login the user
-   * if the client app supports email based authentication it should check its local user collection first before attempting did-web-auth
-   * Extract the username and hostname from the email
-   * Check if the domain looks like a [valid DID Web identifier host](#validating-auth-providers).
-   * request the
-   * Post a authentication request to the auth provider
-3. Extract auth provider domain from email
-4. Validate the Auth Provider
-5. Validate the user did document
-6. Extract the users did-web-auth service endpoint(s)
-7. POST authentication request to Auth Provider
-8. Validate Client App
-9. Validate the authentication request
-10. choose redirect strategy
-11. present one of the offered strategies
-
-
-### Authentication Strategy Flows
-
-
-#### Browser Redirect
-
-*This strategy only possible if user is authenticating to a website in a
-browser*
-
-1. The app redirects the user to their identifier host's authentication
-   endpoint using query params to define the scopes for the requested session
-2. the user is propmpted to confirm the details of the session request
-3. the user approves the session and is redirected back to the app
-
-
-*…continues from [Initial Flow](#initial-flow)*
-
-```mermaid
-sequenceDiagram
-  actor U as User
-  participant C as Client App
-  participant A as Auth Provider
-  U->>+C: [Initial Flow]
-  C->>+A: client request auth from auth provider
-  Note right of A: 1. auth provider offered redirect strategy
-  A->>-C: provider responds with redirect strategy
-  Note right of C: 2. Client App redirects the user
-  C->>-U: HTTP redirect
-  U->>+A: user is redirected to auth provider via HTTP GET
-  Note right of A: 3. validate data in url query params
-  Note right of A: 4. validate current user matches login request
-  A->>-U: render authentication request approval page
-  Note right of U: 5. user approves login request
-  U->>+A: user approves login request
-  Note right of A: 6. generate a new authentication JWT
-  A->>-U: redirects user back to client app with JWT as query param
-  U->>+C: user is redirected back to client app
-  Note right of C: 7. validate and unpack JWT
-  Note right of C: 8. create new local user record
-  C->>+U: user is now logged into the client app
-```
-
-1. auth provider offered redirect strategy
-2. Client App redirects the user
-3. Auth Provider validates the data in url query params
-4. Auth Provider ensures the current user matches login request
-5. User approves login request by using some user interface
-6. Auth Provider generates a new authentication JWT in reply to the Client App
-7. Client App unpacks and validates the JSON Web Token
-8. Client App creates a new user record if needed, stores the JWT and logs in the user
-
-#### Magic Link
-
-*This strategy only possible if the destination app has a public http
-endpoint*
-
-1. The app generates a one-time secret login token, embeds it into a url
-   and post that to the Authentication endpoint
-2. The app then instructs the user to follow the link sent to their identifier
-   host
-
-*…continues from [Initial Flow](#initial-flow)*
-
-```mermaid
-sequenceDiagram
-  actor U as User
-  participant C as Client App
-  participant A as Auth Provider
-  U->>+C: [Initial Flow]
-  C->>+A: client request auth from auth provider
-  A->>-C: provider responds with redirect strategy
-  C->>-U: render page prompting user to go click the link
-  U->>A: Auth provider notifies the user of the login request
-  Note right of U: receives the notification and clicks it
-  Note right of U: views and accepts the auth request
-  A->>C: send a session token to client app
-  C->>U: reloads the page showing successful login
-```
-
-
-#### Secret Code
-
-*This strategy the only strategy available to *
-
-1. The app generates a one-time secret login token, persists a copy of it,
-   embeds it into a callback url and posts that url to the Authentication
-   endpoint.
-2. The app then instructs the user to follow the link sent to their identifier
-   host
-3. The user follows the link sent to their identifier host
-
-*…continues from [Initial Flow](#initial-flow)*
-
-```mermaid
-sequenceDiagram
-  actor U as User
-  participant C as Client App
-  participant A as Auth Provider
-  U->>+C: [Initial Flow]
-  C->>+A: client request auth from auth provider
-  A->>-C: provider responds with redirect strategy
-  C->>-U: render page prompting user for the secret code
-  U->>A: Auth provider notifies the user of their login code
-  Note right of U: receives the notification vith a code
-  Note right of U: views and accepts the auth request
-  U->>+C: enters the secret code
-  C->>-U: reloads the page showing successful login
-```
 
 
 
