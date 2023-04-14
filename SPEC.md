@@ -57,7 +57,7 @@ is out of scope.
 This SPEC builds upon and inherits the terminology from the following spec:
 
 - HTTP - https://www.rfc-editor.org/rfc/rfc2616
-- SMPT - https://www.rfc-editor.org/rfc/rfc2821
+- SMTP - https://www.rfc-editor.org/rfc/rfc2821
 - DID - https://www.w3.org/TR/did-core/
 - well-known DIDs - https://identity.foundation/.well-known/resources/did-configuration/
 - DID Web - https://w3c-ccg.github.io/did-method-web/
@@ -70,23 +70,23 @@ This SPEC builds upon and inherits the terminology from the following spec:
 
 ## Notational Conventions
 
-   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
-   "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
-   specification are to be interpreted as described in [RFC2119].
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+"SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+specification are to be interpreted as described in [RFC2119].
 
-   This specification uses the Augmented Backus-Naur Form (ABNF)
-   notation of [RFC5234].  Additionally, the rule URI-reference is
-   included from "Uniform Resource Identifier (URI): Generic Syntax"
-   [RFC3986].
+This specification uses the Augmented Backus-Naur Form (ABNF)
+notation of [RFC5234].  Additionally, the rule URI-reference is
+included from "Uniform Resource Identifier (URI): Generic Syntax"
+[RFC3986].
 
-   Certain security-related terms are to be understood in the sense
-   defined in [RFC4949].  These terms include, but are not limited to,
-   "attack", "authentication", "authorization", "certificate",
-   "confidentiality", "credential", "encryption", "identity", "sign",
-   "signature", "trust", "validate", and "verify".
+Certain security-related terms are to be understood in the sense
+defined in [RFC4949].  These terms include, but are not limited to,
+"attack", "authentication", "authorization", "certificate",
+"confidentiality", "credential", "encryption", "identity", "sign",
+"signature", "trust", "validate", and "verify".
 
-   Unless otherwise noted, all the protocol parameter names and values
-   are case sensitive.
+Unless otherwise noted, all the protocol parameter names and values
+are case sensitive.
 
 
 ## Terms
@@ -98,6 +98,7 @@ The human interacting with a device.
 ### Auth Provider
 
 An HTTP Web application that:
+
 - hosts users with did:web DIDs
 - serves did documents
 - exposes the [auth provider endpoints](#auth-provider-endpoints)
@@ -160,7 +161,7 @@ Auth providers must respond to the following HTTP endpoints:
 | [Domain DID Document](#domain-did-document-endpoint)   | `/.well-known/did.json`
 | [Domain DID Conf](#domain-did-conf-endpoint)           | `/.well-known/did-configuration.json`
 | [User DID Document](#user-did-document-endpoint)       | `/u/:alice/did.json`
-| [DID Auth Endpoint](#did-auth-endpoint-endpoint)       | defined in User DID Document services
+| [DID Auth Endpoint](#did-auth-endpoint)       | defined in User DID Document services
 | [Sign in Confirmation](#sign-in-confirmation-endpoint) | defined in response from [DID Auth Endpoint](#did-auth-endpoint)
 
 
@@ -174,8 +175,8 @@ Auth providers must respond to the following HTTP endpoints:
 |--------------------------------------------------------|-
 | [Domain DID Document](#domain-did-document-endpoint)   | `/.well-known/did.json`
 | [Domain DID Conf](#domain-did-conf-endpoint)           | `/.well-known/did-configuration.json`
-| [Sing in Route]                                        |
 | [Sign in Completion](#sign-in-completion-endpoint)     | defined by the `returnTo` param sent the Auth Providers [Sign in Confirmation endpoint](#sign-in-confirmation-endpoint)
+
 
 
 
@@ -220,12 +221,9 @@ The pathname portion of the `serviceEndpoint` can be any path.
 
 ### DID Auth Endpoint
 
-This endpoint can be at any path the Auth Provider wants.
+This endpoint can be at any pathname under the same domain as the Auth Provider. Client apps get this endpoint url from the service endpoint in the user's DID Document.
 
-This path is give then to clients as the
-
-- method: POST
-- path: [defined by the service endpoint in the user's DID Document]
+This endpoint is called with HTTP method POST
 
 The post body should be `application/json`
 
@@ -373,30 +371,60 @@ This endpoint can be at any pathname the client application desires.
  - IdHost - the website that hosts the identifier being used to authenticate
  - App - the website being logged into
 
+
+### Initial Flow
+
 ```mermaid
 sequenceDiagram
-  User->>+ClientApp: Step 1
-  ClientApp->>+AuthProvider: Step 2
-  AuthProvider->>-ClientApp: Step 3
-  ClientApp->>-User: Step 4
+  actor U as User
+  participant C as Client App
+  participant A as Auth Provider
+  Note right of U: 1. user visits new app and submits signup form
+  U->>+C: HTTP POST with did email
+  Note right of C: 2. check local users table for email
+  Note right of C: 3. extract auth provider domain from email
+  Note right of C: 4. validate the auth provider
+  C-->>+A: request auth provider's did document
+  A-->>-C:
+  Note right of C: 5. validate the user did document
+  C-->>+A: request user's did document
+  A-->>-C: 
+  Note right of C: 6. extract the users did-web-auth service endpoint(s)
+  Note right of C: 7. POST authentication request
+  C-->>+A: request sign in via HTTP POST to DID Auth Endpoint
+  Note right of A: 8. validate client app
+  A-->>+C: get client app DID Document
+  C-->>-A: 
+  Note right of A: 9. validate the authentication request
+  Note right of A: 10. choose redirect strategy
+  A-->>-C: respond with next signing step
+  Note right of C: 11. present one of the offered strategies
+  C->>-U: present the next step to the user
 ```
 
+
 1. User visits a new app and gives them their did in email address form
-2. The app extracts the host from the email and checks if that host is a
-   valid DID Web identifier host by getting and validating:
-   * host did document from `https://${host}/.well-known/did.json`
-   * user did document from `https://${host}/dids/${username}/did.json`
-   * *what to do here if the host is invalid is outside the scope of this
-     document but a fallback to a more classic form of authentication might
-     be appropriate here.*
-3. The app uses one of the 4 authentication methods to request a session
-   token.
-4. Success. The app can now use your session token to gain limited access to
-   other api endpoints on your identifier host.
+2. The client app attempts to use the email to login the user
+   * if the client app supports email based authentication it should check its local user collection first before attempting did-web-auth
+   * Extract the username and hostname from the email
+   * Check if the domain looks like a [valid DID Web identifier host](#validating-auth-providers).
+   * request the
+   * Post a authentication request to the auth provider
+3. Extract auth provider domain from email
+4. Validate the Auth Provider
+5. Validate the user did document
+6. Extract the users did-web-auth service endpoint(s)
+7. POST authentication request to Auth Provider
+8. Validate Client App
+9. Validate the authentication request
+10. choose redirect strategy
+11. present one of the offered strategies
 
-#### Authentication Methods
 
-##### Browser Redirect
+### Authentication Strategy Flows
+
+
+#### Browser Redirect
 
 *This strategy only possible if user is authenticating to a website in a
 browser*
@@ -407,8 +435,43 @@ browser*
 3. the user approves the session and is redirected back to the app
 
 
+*…continues from [Initial Flow](#initial-flow)*
 
-##### Magic Link
+```mermaid
+sequenceDiagram
+  actor U as User
+  participant C as Client App
+  participant A as Auth Provider
+  U->>+C: [Initial Flow]
+  C->>+A: client request auth from auth provider
+  Note right of A: 1. auth provider offered redirect strategy
+  A->>-C: provider responds with redirect strategy
+  Note right of C: 2. Client App redirects the user
+  C->>-U: HTTP redirect
+  U->>+A: user is redirected to auth provider via HTTP GET
+  Note right of A: 3. validate data in url query params
+  Note right of A: 4. validate current user matches login request
+  A->>-U: render authentication request approval page
+  Note right of U: 5. user approves login request
+  U->>+A: user approves login request
+  Note right of A: 6. generate a new authentication JWT
+  A->>-U: redirects user back to client app with JWT as query param
+  U->>+C: user is redirected back to client app
+  Note right of C: 7. validate and unpack JWT
+  Note right of C: 8. create new local user record
+  C->>+U: user is now logged into the client app
+```
+
+1. auth provider offered redirect strategy
+2. Client App redirects the user
+3. Auth Provider validates the data in url query params
+4. Auth Provider ensures the current user matches login request
+5. User approves login request by using some user interface
+6. Auth Provider generates a new authentication JWT in reply to the Client App
+7. Client App unpacks and validates the JSON Web Token
+8. Client App creates a new user record if needed, stores the JWT and logs in the user
+
+#### Magic Link
 
 *This strategy only possible if the destination app has a public http
 endpoint*
@@ -418,8 +481,26 @@ endpoint*
 2. The app then instructs the user to follow the link sent to their identifier
    host
 
+*…continues from [Initial Flow](#initial-flow)*
 
-##### Secret Code
+```mermaid
+sequenceDiagram
+  actor U as User
+  participant C as Client App
+  participant A as Auth Provider
+  U->>+C: [Initial Flow]
+  C->>+A: client request auth from auth provider
+  A->>-C: provider responds with redirect strategy
+  C->>-U: render page prompting user to go click the link
+  U->>A: Auth provider notifies the user of the login request
+  Note right of U: receives the notification and clicks it
+  Note right of U: views and accepts the auth request
+  A->>C: send a session token to client app
+  C->>U: reloads the page showing successful login
+```
+
+
+#### Secret Code
 
 *This strategy the only strategy available to *
 
@@ -430,15 +511,23 @@ endpoint*
    host
 3. The user follows the link sent to their identifier host
 
+*…continues from [Initial Flow](#initial-flow)*
 
-##### Identifier Host Prompt
-
-*this strategy requires that the identifier host have a UX*
-
-4. The app requests
-
-
-
+```mermaid
+sequenceDiagram
+  actor U as User
+  participant C as Client App
+  participant A as Auth Provider
+  U->>+C: [Initial Flow]
+  C->>+A: client request auth from auth provider
+  A->>-C: provider responds with redirect strategy
+  C->>-U: render page prompting user for the secret code
+  U->>A: Auth provider notifies the user of their login code
+  Note right of U: receives the notification vith a code
+  Note right of U: views and accepts the auth request
+  U->>+C: enters the secret code
+  C->>-U: reloads the page showing successful login
+```
 
 
 
