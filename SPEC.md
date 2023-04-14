@@ -4,16 +4,6 @@
 
 This is a work in progress
 
-### TODO
-
-- [ ] update auth flow diagram
-- [ ] define error codes for JSON responses
-- [ ] read and integrate with
-  - https://github.com/WebOfTrustInfo/rwot6-santabarbara/blob/master/final-documents/did-auth.md
-  - https://github.com/decentralized-identity/did-auth-jose/blob/master/docs/OIDCAuthentication.md#enroll-beta
-  - selective disclosure request
-    - https://github.com/uport-project/specs/blob/develop/messages/sharereq.md
-
 ## Abstract
 
 The DID Web Authorization Framework expands upon the [did:web spec][did-web-spec]
@@ -294,7 +284,7 @@ The Auth Provider can use any pathname they like but the `redirectTo` URL
 must be at the same origin. The url can also include any query params
 needed to to ensure the right user is properly identified after redirection.
 
-```
+```json
 // Example Authentication Response
 {
   "redirectTo": "https://example-auth-provider.com/login/to/example-client.com",
@@ -385,7 +375,7 @@ sequenceDiagram
   Note right of C: 3. extract auth provider domain from email
   Note right of C: 4. validate the auth provider
   C-->>+A: request auth provider's did document
-  A-->>-C:
+  A-->>-C: 
   Note right of C: 5. validate the user did document
   C-->>+A: request user's did document
   A-->>-C: 
@@ -653,3 +643,18 @@ The signature must be from a key present in the current domain did document.
 [vc-data-model]: https://www.w3.org/TR/vc-data-model/
 [well-known-did-configuration]: https://identity.foundation/.well-known/resources/did-configuration/
 [did-configuration-resource]: https://identity.foundation/. well-known/resources/did-configuration/#DIDConfigurationResource
+
+
+
+
+### TODO
+
+- [ ] define error codes for JSON responses
+- [ ] add sequence diagrams for
+  - [ ] verifying an Auth Provider
+  - [ ] verifying a Client App
+- [ ] read and integrate with
+  - https://github.com/WebOfTrustInfo/rwot6-santabarbara/blob/master/final-documents/did-auth.md
+  - https://github.com/decentralized-identity/did-auth-jose/blob/master/docs/OIDCAuthentication.md#enroll-beta
+  - selective disclosure request
+    - https://github.com/uport-project/specs/blob/develop/messages/sharereq.md
